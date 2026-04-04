@@ -48,4 +48,8 @@
 	<p><a href="<?php echo site_url('profile/licences'); ?>">Manage Licences</a></p>
 	<p><a href="<?php echo site_url('profile/courses'); ?>">Manage Short Courses</a></p>
 	<p><a href="<?php echo site_url('profile/employment'); ?>">Manage Employment History</a></p>
+	<hr style="border:none; border-top:1px solid #e5e7eb; margin:16px 0;">
+	<p><strong>Blind Bidding</strong></p>
+	<p><a href="<?php echo site_url('bids/place'); ?>">Place blind bid</a></p>
+	<p><a href="<?php echo site_url('bids/status'); ?>">View blind bid status</a></p>
 </section>

@@ -96,3 +96,8 @@ $route['profile/employment/add'] = 'profile/add_employment';
 $route['profile/employment/edit/(:num)'] = 'profile/edit_employment/$1';
 $route['profile/employment/update/(:num)'] = 'profile/update_employment/$1';
 $route['profile/employment/delete/(:num)'] = 'profile/delete_employment/$1';
+
+$route['bids'] = 'bids/index';
+$route['bids/place'] = 'bids/place';
+$route['bids/store'] = 'bids/store';
+$route['bids/status'] = 'bids/status';
