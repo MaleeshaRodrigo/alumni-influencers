@@ -1,0 +1,368 @@
+openapi: 3.0.3
+info:
+  title: Alumni Influencers API
+  version: 1.0.0
+  description: >
+    Coursework API and web action documentation for the CodeIgniter 3 Alumni Influencers project.
+    Includes public developer endpoint(s), admin API-key management actions, bidding actions,
+    and authentication workflow endpoints.
+servers:
+  - url: http://localhost/alumni-influencers
+    description: Local XAMPP default
+tags:
+  - name: Health
+  - name: Public API
+  - name: Authentication
+  - name: Bidding
+  - name: Admin API Keys
+paths:
+  /ping:
+    get:
+      tags: [Health]
+      summary: Health check endpoint
+      responses:
+        '200':
+          description: Service is reachable
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+
+  /api/featured-today:
+    get:
+      tags: [Public API]
+      summary: Get today's featured alumnus (public, AR-facing)
+      description: Returns safe public profile data only.
+      responses:
+        '200':
+          description: Featured alumnus found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturedTodaySuccess'
+        '404':
+          description: No featured alumnus for current day
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeaturedTodayNotFound'
+        '429':
+          description: Public API rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /auth/do-register:
+    post:
+      tags: [Authentication]
+      summary: Register new user account (form action)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [email, password, password_confirm]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                password_confirm:
+                  type: string
+                  format: password
+      responses:
+        '302':
+          description: Redirect to verify notice or back to register with flash messages
+
+  /auth/verify-email/{token}:
+    get:
+      tags: [Authentication]
+      summary: Verify email token
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+            pattern: '^[a-f0-9]{64}$'
+      responses:
+        '302':
+          description: Redirect to login on success or register on failure
+
+  /auth/do_login:
+    post:
+      tags: [Authentication]
+      summary: Login user (form action)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        '302':
+          description: Redirect to dashboard on success or login on failure
+        '429':
+          description: Login rate limit reached
+
+  /auth/send_reset:
+    post:
+      tags: [Authentication]
+      summary: Request password reset (form action)
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+      responses:
+        '302':
+          description: Redirect back to forgot-password with generic flash message
+        '429':
+          description: Reset request rate limit reached
+
+  /auth/do_reset_password:
+    post:
+      tags: [Authentication]
+      summary: Submit new password via reset token
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [token, password, password_confirm]
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                password_confirm:
+                  type: string
+                  format: password
+      responses:
+        '302':
+          description: Redirect to login on success or reset/forgot page on failure
+
+  /bids/store:
+    post:
+      tags: [Bidding]
+      summary: Place or increase blind bid for current cycle
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [bid_amount]
+              properties:
+                bid_amount:
+                  type: number
+                  format: float
+                  minimum: 0.01
+      responses:
+        '302':
+          description: Redirect to bid status (success) or place page (validation/business errors)
+
+  /bids/status:
+    get:
+      tags: [Bidding]
+      summary: View current blind bid status page
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: HTML page showing winning/losing status only
+
+  /admin/api_keys:
+    get:
+      tags: [Admin API Keys]
+      summary: Admin API key management page
+      security:
+        - sessionAuth: []
+      responses:
+        '200':
+          description: HTML admin page
+        '403':
+          description: Forbidden (non-admin)
+
+  /admin/create_api_key:
+    post:
+      tags: [Admin API Keys]
+      summary: Create API key (raw token shown once via flash)
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                user_id:
+                  type: integer
+                  nullable: true
+                scopes:
+                  type: string
+                expires_at:
+                  type: string
+                  example: '2026-12-31 23:59:59'
+      responses:
+        '302':
+          description: Redirect back to admin keys page with flash result
+
+  /admin/revoke_api_key/{id}:
+    post:
+      tags: [Admin API Keys]
+      summary: Revoke API key
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+      responses:
+        '302':
+          description: Redirect back to admin keys page
+        '405':
+          description: Method not allowed when not POST
+
+  /admin/usage_logs:
+    get:
+      tags: [Admin API Keys]
+      summary: View API usage logs
+      security:
+        - sessionAuth: []
+      parameters:
+        - in: query
+          name: api_key_id
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: HTML admin page with logs table
+        '403':
+          description: Forbidden (non-admin)
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: ci_session
+      description: Browser session cookie issued after successful login.
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API Key Token
+      description: >
+        Used for protected machine-to-machine endpoints when enabled.
+        Full token is shown only once at key creation; server stores SHA-256 hash only.
+  schemas:
+    ApiError:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Too many requests. Please try again later.
+    FeaturedTodaySuccess:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Featured alumnus found.
+        date:
+          type: string
+          example: '2026-04-04'
+        data:
+          type: object
+          properties:
+            cycle_id:
+              type: integer
+              example: 20260404
+            featured_from:
+              type: string
+              example: '2026-04-04 00:00:00'
+            featured_until:
+              type: string
+              example: '2026-04-05 00:00:00'
+            alumnus:
+              type: object
+              properties:
+                profile_id:
+                  type: integer
+                  example: 12
+                display_name:
+                  type: string
+                  example: Jane Doe
+                bio:
+                  type: string
+                  example: AI engineer and alumni mentor.
+                photo_url:
+                  type: string
+                  nullable: true
+                  example: http://localhost/alumni-influencers/uploads/profile_photos/abc123.jpg
+                linkedin_url:
+                  type: string
+                  nullable: true
+                  example: https://www.linkedin.com/in/jane-doe
+    FeaturedTodayNotFound:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: No featured alumnus for today.
+        date:
+          type: string
+          example: '2026-04-04'
+        data:
+          nullable: true
+          example: null
