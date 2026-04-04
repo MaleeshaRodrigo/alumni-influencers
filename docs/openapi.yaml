@@ -198,6 +198,37 @@ paths:
         '200':
           description: HTML page showing winning/losing status only
 
+  /bids/run-daily-winner:
+    get:
+      tags: [Bidding]
+      summary: Run the daily winner selection job
+      description: Intended for CLI or scheduled automation; web calls require BIDS_ADMIN_KEY.
+      parameters:
+        - in: query
+          name: cycle_id
+          required: false
+          schema:
+            type: integer
+        - in: query
+          name: key
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Daily winner result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                  cycle_id:
+                    type: integer
+        '403':
+          description: Forbidden for web callers without the admin key
+
   /admin/api_keys:
     get:
       tags: [Admin API Keys]

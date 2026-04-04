@@ -44,6 +44,8 @@ PHP + CodeIgniter 3 + MySQL coursework application covering:
   - `/api-docs`
 - OpenAPI spec:
   - `/api-docs/openapi.yaml`
+- Winner automation:
+  - `/bids/run-daily-winner`
 
 ## Documentation Index
 

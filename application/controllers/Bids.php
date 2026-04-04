@@ -2,9 +2,10 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
- * Blind bidding core flow (Step 8).
+ * Blind bidding core flow + automated winner selection.
  *
  * @property CI_Input $input
+ * @property CI_Output $output
  * @property CI_Session $session
  * @property CI_Form_validation $form_validation
  * @property Bid_model $bid_model
@@ -172,24 +173,21 @@ class Bids extends MY_Controller
 			);
 		}
 
-		$user = $this->require_verified_user();
-		if (!isset($user['role']) || (string) $user['role'] !== 'admin') {
-			log_message('error', 'run_daily_winner forbidden: non-admin user_id='.(int) $user['id']);
+		$expected_key = getenv('BIDS_ADMIN_KEY');
+		if ($expected_key === FALSE || $expected_key === '') {
+			log_message('error', 'run_daily_winner forbidden: missing BIDS_ADMIN_KEY for web trigger');
 			show_error('Forbidden', 403);
 		}
 
-		$expected_key = getenv('BIDS_ADMIN_KEY');
-		if ($expected_key !== FALSE && $expected_key !== '') {
-			$provided = (string) $this->input->get('key', TRUE);
-			if (!hash_equals((string) $expected_key, $provided)) {
-				log_message('error', 'run_daily_winner forbidden: invalid admin key user_id='.(int) $user['id']);
-				show_error('Forbidden', 403);
-			}
+		$provided = (string) $this->input->get('key', TRUE);
+		if (!hash_equals((string) $expected_key, $provided)) {
+			log_message('error', 'run_daily_winner forbidden: invalid admin key');
+			show_error('Forbidden', 403);
 		}
 
 		return array(
-			'trigger' => 'web_admin',
-			'actor_user_id' => (int) $user['id']
+			'trigger' => 'web_key',
+			'actor_user_id' => 0
 		);
 	}
 }
