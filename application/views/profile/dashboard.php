@@ -36,4 +36,11 @@
 	<p style="margin-top:18px;">
 		<a href="<?php echo site_url('profile/basic'); ?>">Edit basic profile</a>
 	</p>
+	<hr style="border:none; border-top:1px solid #e5e7eb; margin:16px 0;">
+	<p><strong>Profile Sections</strong></p>
+	<p><a href="<?php echo site_url('profile/degrees'); ?>">Manage Degrees</a></p>
+	<p><a href="<?php echo site_url('profile/certifications'); ?>">Manage Certifications</a></p>
+	<p><a href="<?php echo site_url('profile/licences'); ?>">Manage Licences</a></p>
+	<p><a href="<?php echo site_url('profile/courses'); ?>">Manage Short Courses</a></p>
+	<p><a href="<?php echo site_url('profile/employment'); ?>">Manage Employment History</a></p>
 </section>

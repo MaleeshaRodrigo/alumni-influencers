@@ -66,3 +66,33 @@ $route['profile'] = 'profile/dashboard';
 $route['profile/dashboard'] = 'profile/dashboard';
 $route['profile/basic'] = 'profile/basic';
 $route['profile/save-basic'] = 'profile/save_basic';
+
+$route['profile/degrees'] = 'profile/degrees';
+$route['profile/degrees/add'] = 'profile/add_degree';
+$route['profile/degrees/edit/(:num)'] = 'profile/edit_degree/$1';
+$route['profile/degrees/update/(:num)'] = 'profile/update_degree/$1';
+$route['profile/degrees/delete/(:num)'] = 'profile/delete_degree/$1';
+
+$route['profile/certifications'] = 'profile/certifications';
+$route['profile/certifications/add'] = 'profile/add_certification';
+$route['profile/certifications/edit/(:num)'] = 'profile/edit_certification/$1';
+$route['profile/certifications/update/(:num)'] = 'profile/update_certification/$1';
+$route['profile/certifications/delete/(:num)'] = 'profile/delete_certification/$1';
+
+$route['profile/licences'] = 'profile/licences';
+$route['profile/licences/add'] = 'profile/add_licence';
+$route['profile/licences/edit/(:num)'] = 'profile/edit_licence/$1';
+$route['profile/licences/update/(:num)'] = 'profile/update_licence/$1';
+$route['profile/licences/delete/(:num)'] = 'profile/delete_licence/$1';
+
+$route['profile/courses'] = 'profile/courses';
+$route['profile/courses/add'] = 'profile/add_course';
+$route['profile/courses/edit/(:num)'] = 'profile/edit_course/$1';
+$route['profile/courses/update/(:num)'] = 'profile/update_course/$1';
+$route['profile/courses/delete/(:num)'] = 'profile/delete_course/$1';
+
+$route['profile/employment'] = 'profile/employment';
+$route['profile/employment/add'] = 'profile/add_employment';
+$route['profile/employment/edit/(:num)'] = 'profile/edit_employment/$1';
+$route['profile/employment/update/(:num)'] = 'profile/update_employment/$1';
+$route['profile/employment/delete/(:num)'] = 'profile/delete_employment/$1';
