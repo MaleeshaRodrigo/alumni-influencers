@@ -87,4 +87,16 @@ class Profile_model extends CI_Model {
 
 		return $created_id;
 	}
+
+	public function update_photo_path_by_user_id($user_id, $relative_path)
+	{
+		$current = $this->get_by_user_id((int) $user_id);
+		if (!$current) {
+			return FALSE;
+		}
+
+		return $this->update((int) $current['id'], array(
+			'photo_path' => $relative_path
+		));
+	}
 }

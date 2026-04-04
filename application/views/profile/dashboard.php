@@ -17,6 +17,11 @@
 	<?php endif; ?>
 
 	<?php if (!empty($profile)): ?>
+		<?php if (!empty($profile['photo_path'])): ?>
+			<p>
+				<img src="<?php echo base_url($profile['photo_path']); ?>" alt="Profile image" style="max-width:160px; max-height:160px; border-radius:10px; border:1px solid #d1d5db;">
+			</p>
+		<?php endif; ?>
 		<p><strong>Full name:</strong> <?php echo html_escape($profile['display_name']); ?></p>
 		<p><strong>Bio:</strong> <?php echo !empty($profile['bio']) ? nl2br(html_escape($profile['bio'])) : '<em>Not set</em>'; ?></p>
 		<p>

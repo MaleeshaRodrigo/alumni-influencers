@@ -89,12 +89,35 @@ class Profile extends MY_Controller
 			$payload['linkedin_url'] = NULL;
 		}
 
+		$current_profile = $this->profile_model->get_by_user_id((int) $user['id']);
+		$old_photo_path = $current_profile && !empty($current_profile['photo_path']) ? (string) $current_profile['photo_path'] : NULL;
+		$new_photo_path = NULL;
+
+		if (isset($_FILES['profile_image']) && !empty($_FILES['profile_image']['name'])) {
+			$upload_result = $this->upload_profile_photo('profile_image');
+			if (!$upload_result['ok']) {
+				$this->session->set_flashdata('profile_error', $upload_result['error']);
+				redirect('profile/basic');
+				return;
+			}
+
+			$new_photo_path = $upload_result['relative_path'];
+			$payload['photo_path'] = $new_photo_path;
+		}
+
 		$profile_id = $this->profile_model->save_basic_by_user_id((int) $user['id'], $payload);
 		if (!$profile_id) {
+			if ($new_photo_path !== NULL) {
+				$this->safe_delete_profile_photo($new_photo_path);
+			}
 			log_message('error', 'Profile basic save failed for user_id='.(int) $user['id']);
 			$this->session->set_flashdata('profile_error', 'Could not save your profile right now.');
 			redirect('profile/basic');
 			return;
+		}
+
+		if ($new_photo_path !== NULL && $old_photo_path !== NULL && $old_photo_path !== $new_photo_path) {
+			$this->safe_delete_profile_photo($old_photo_path);
 		}
 
 		log_message('info', 'Profile basic saved: user_id='.(int) $user['id'].' profile_id='.(int) $profile_id);
@@ -639,5 +662,71 @@ class Profile extends MY_Controller
 	{
 		$value = trim((string) $value);
 		return $value === '' ? NULL : $value;
+	}
+
+	private function upload_profile_photo($field_name)
+	{
+		$upload_dir = $this->profile_upload_directory();
+		if (!is_dir($upload_dir) && !mkdir($upload_dir, 0755, TRUE)) {
+			log_message('error', 'Profile image upload failed: could not create upload directory');
+			return array('ok' => FALSE, 'error' => 'Upload folder is not writable.');
+		}
+
+		$config = array(
+			'upload_path' => $upload_dir,
+			'allowed_types' => 'jpg|jpeg|png|webp',
+			'max_size' => 2048,
+			'encrypt_name' => TRUE,
+			'file_ext_tolower' => TRUE,
+			'remove_spaces' => TRUE,
+			'detect_mime' => TRUE
+		);
+
+		$this->load->library('upload');
+		$this->upload->initialize($config, TRUE);
+
+		if (!$this->upload->do_upload($field_name)) {
+			$error = strip_tags((string) $this->upload->display_errors('', ''));
+			log_message('error', 'Profile image upload failed: '.$error);
+			return array('ok' => FALSE, 'error' => $error !== '' ? $error : 'Image upload failed.');
+		}
+
+		$data = $this->upload->data();
+		$relative_path = 'uploads/profile_images/'.$data['file_name'];
+		return array(
+			'ok' => TRUE,
+			'relative_path' => $relative_path
+		);
+	}
+
+	private function safe_delete_profile_photo($relative_path)
+	{
+		$relative_path = trim((string) $relative_path);
+		if ($relative_path === '' || strpos($relative_path, 'uploads/profile_images/') !== 0) {
+			return;
+		}
+
+		$absolute = FCPATH.$relative_path;
+		$base_dir = realpath($this->profile_upload_directory());
+		$file_real = realpath($absolute);
+
+		if ($base_dir === FALSE || $file_real === FALSE) {
+			return;
+		}
+
+		$normalized_base = rtrim(str_replace('\\', '/', $base_dir), '/').'/';
+		$normalized_file = str_replace('\\', '/', $file_real);
+		if (strpos($normalized_file, $normalized_base) !== 0) {
+			return;
+		}
+
+		if (is_file($file_real)) {
+			@unlink($file_real);
+		}
+	}
+
+	private function profile_upload_directory()
+	{
+		return rtrim(FCPATH, '/\\').DIRECTORY_SEPARATOR.'uploads'.DIRECTORY_SEPARATOR.'profile_images'.DIRECTORY_SEPARATOR;
 	}
 }
