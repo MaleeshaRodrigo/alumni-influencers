@@ -9,7 +9,7 @@ $form_action = $is_edit ? site_url('profile/degrees/update/'.(int) $edit_item['i
 
 	<?php if ($this->session->flashdata('section_error')): ?>
 		<div style="margin:12px 0; padding:10px; border:1px solid #ef4444; background:#fef2f2; color:#991b1b; border-radius:6px;">
-			<?php echo $this->session->flashdata('section_error'); ?>
+			<?php echo strip_tags((string) $this->session->flashdata('section_error'), '<p><br><strong><em><ul><li>'); ?>
 		</div>
 	<?php endif; ?>
 	<?php if ($this->session->flashdata('section_success')): ?>
@@ -20,6 +20,7 @@ $form_action = $is_edit ? site_url('profile/degrees/update/'.(int) $edit_item['i
 
 	<h3><?php echo $is_edit ? 'Edit Degree' : 'Add Degree'; ?></h3>
 	<form method="post" action="<?php echo $form_action; ?>">
+		<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
 		<p><label>Institution<br><input type="text" name="institution" required maxlength="255" style="width:100%;" value="<?php echo html_escape(set_value('institution', $is_edit ? $edit_item['institution'] : '')); ?>"></label></p>
 		<p><label>Qualification<br><input type="text" name="qualification" required maxlength="255" style="width:100%;" value="<?php echo html_escape(set_value('qualification', $is_edit ? $edit_item['qualification'] : '')); ?>"></label></p>
 		<p><label>Field of Study<br><input type="text" name="field_of_study" maxlength="255" style="width:100%;" value="<?php echo html_escape(set_value('field_of_study', $is_edit ? $edit_item['field_of_study'] : '')); ?>"></label></p>
@@ -43,6 +44,7 @@ $form_action = $is_edit ? site_url('profile/degrees/update/'.(int) $edit_item['i
 				<small><?php echo html_escape((string) $row['started_on']); ?> to <?php echo html_escape((string) $row['completed_on']); ?></small><br>
 				<a href="<?php echo site_url('profile/degrees/edit/'.(int) $row['id']); ?>">Edit</a>
 				<form method="post" action="<?php echo site_url('profile/degrees/delete/'.(int) $row['id']); ?>" style="display:inline;">
+					<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
 					<button type="submit" onclick="return confirm('Delete this degree?');">Delete</button>
 				</form>
 			</div>

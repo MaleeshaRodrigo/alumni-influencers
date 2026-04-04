@@ -6,11 +6,12 @@
 
 	<?php if ($this->session->flashdata('auth_error')): ?>
 		<div style="margin:12px 0; padding:10px; border:1px solid #ef4444; background:#fef2f2; color:#991b1b; border-radius:6px;">
-			<?php echo $this->session->flashdata('auth_error'); ?>
+			<?php echo strip_tags((string) $this->session->flashdata('auth_error'), '<p><br><strong><em><ul><li>'); ?>
 		</div>
 	<?php endif; ?>
 
 	<form method="post" action="<?php echo site_url('auth/do_reset_password'); ?>" novalidate>
+		<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
 		<input type="hidden" name="token" value="<?php echo html_escape($token); ?>">
 
 		<div style="margin-bottom:14px;">

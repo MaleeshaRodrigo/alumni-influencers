@@ -13,11 +13,12 @@ $existing_photo = isset($profile['photo_path']) ? $profile['photo_path'] : '';
 
 	<?php if ($this->session->flashdata('profile_error')): ?>
 		<div style="margin:12px 0; padding:10px; border:1px solid #ef4444; background:#fef2f2; color:#991b1b; border-radius:6px;">
-			<?php echo $this->session->flashdata('profile_error'); ?>
+			<?php echo strip_tags((string) $this->session->flashdata('profile_error'), '<p><br><strong><em><ul><li>'); ?>
 		</div>
 	<?php endif; ?>
 
 	<form method="post" action="<?php echo site_url('profile/save-basic'); ?>" enctype="multipart/form-data" novalidate>
+		<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
 		<div style="margin-bottom:14px;">
 			<label for="full_name" style="display:block; font-weight:bold; margin-bottom:6px;">Full Name</label>
 			<input

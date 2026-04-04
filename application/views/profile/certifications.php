@@ -9,7 +9,7 @@ $form_action = $is_edit ? site_url('profile/certifications/update/'.(int) $edit_
 
 	<?php if ($this->session->flashdata('section_error')): ?>
 		<div style="margin:12px 0; padding:10px; border:1px solid #ef4444; background:#fef2f2; color:#991b1b; border-radius:6px;">
-			<?php echo $this->session->flashdata('section_error'); ?>
+			<?php echo strip_tags((string) $this->session->flashdata('section_error'), '<p><br><strong><em><ul><li>'); ?>
 		</div>
 	<?php endif; ?>
 	<?php if ($this->session->flashdata('section_success')): ?>
@@ -20,6 +20,7 @@ $form_action = $is_edit ? site_url('profile/certifications/update/'.(int) $edit_
 
 	<h3><?php echo $is_edit ? 'Edit Certification' : 'Add Certification'; ?></h3>
 	<form method="post" action="<?php echo $form_action; ?>">
+		<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
 		<p><label>Name<br><input type="text" name="name" required maxlength="255" style="width:100%;" value="<?php echo html_escape(set_value('name', $is_edit ? $edit_item['name'] : '')); ?>"></label></p>
 		<p><label>Issuer<br><input type="text" name="issuer" maxlength="255" style="width:100%;" value="<?php echo html_escape(set_value('issuer', $is_edit ? $edit_item['issuer'] : '')); ?>"></label></p>
 		<p><label>Credential ID / URL<br><input type="text" name="credential_id" maxlength="128" style="width:100%;" value="<?php echo html_escape(set_value('credential_id', $is_edit ? $edit_item['credential_id'] : '')); ?>"></label></p>
@@ -43,6 +44,7 @@ $form_action = $is_edit ? site_url('profile/certifications/update/'.(int) $edit_
 				<small><?php echo html_escape((string) $row['issued_on']); ?> to <?php echo html_escape((string) $row['expires_on']); ?></small><br>
 				<a href="<?php echo site_url('profile/certifications/edit/'.(int) $row['id']); ?>">Edit</a>
 				<form method="post" action="<?php echo site_url('profile/certifications/delete/'.(int) $row['id']); ?>" style="display:inline;">
+					<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
 					<button type="submit" onclick="return confirm('Delete this certification?');">Delete</button>
 				</form>
 			</div>

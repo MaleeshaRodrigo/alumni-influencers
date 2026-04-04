@@ -4,7 +4,7 @@
 
 	<?php if ($this->session->flashdata('admin_error')): ?>
 		<div style="margin:12px 0; padding:10px; border:1px solid #ef4444; background:#fef2f2; color:#991b1b; border-radius:6px;">
-			<?php echo $this->session->flashdata('admin_error'); ?>
+			<?php echo strip_tags((string) $this->session->flashdata('admin_error'), '<p><br><strong><em><ul><li>'); ?>
 		</div>
 	<?php endif; ?>
 
@@ -23,6 +23,7 @@
 
 	<h3>Create API Key</h3>
 	<form method="post" action="<?php echo site_url('admin/create_api_key'); ?>" novalidate>
+		<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
 		<div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
 			<div>
 				<label for="name" style="display:block; font-weight:bold; margin-bottom:6px;">Key Name</label>
@@ -89,6 +90,7 @@
 							<td style="border-bottom:1px solid #f1f5f9; padding:8px;">
 								<?php if ((int) $key['is_revoked'] === 0): ?>
 									<form method="post" action="<?php echo site_url('admin/revoke_api_key/'.(int) $key['id']); ?>" style="margin:0;">
+										<input type="hidden" name="<?php echo $this->security->get_csrf_token_name(); ?>" value="<?php echo $this->security->get_csrf_hash(); ?>">
 										<input type="text" name="reason" placeholder="Reason (optional)" style="padding:6px; border:1px solid #d1d5db; border-radius:6px; width:160px;">
 										<button type="submit" style="background:#7f1d1d; color:#fff; border:none; padding:7px 10px; border-radius:6px; cursor:pointer;">Revoke</button>
 									</form>

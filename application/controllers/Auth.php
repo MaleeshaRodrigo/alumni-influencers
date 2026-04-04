@@ -21,7 +21,9 @@ class Auth extends MY_Controller
 		$this->load->model('User_model', 'user_model');
 		$this->load->helper(array('form', 'url'));
 		$this->load->library('form_validation');
+		$this->load->library('RateLimiter');
 		$this->config->load('auth', TRUE);
+		$this->config->load('security_hardening', TRUE);
 	}
 
 	public function register()
@@ -41,11 +43,20 @@ class Auth extends MY_Controller
 			return;
 		}
 
+		$ip = (string) $this->input->ip_address();
+		if ($this->is_rate_limited('auth_register', 'auth_register:'.$ip)) {
+			log_message('error', 'Registration rate limit hit for ip='.$ip);
+			$this->session->set_flashdata('auth_error', 'Too many registration attempts. Please try again later.');
+			redirect('register');
+			return;
+		}
+
 		$this->form_validation->set_rules('email', 'University Email', 'trim|required|valid_email|max_length[255]|callback__email_domain_allowed|callback__email_available');
 		$this->form_validation->set_rules('password', 'Password', 'required|callback__strong_password');
 		$this->form_validation->set_rules('password_confirm', 'Confirm Password', 'required|matches[password]');
 
 		if ($this->form_validation->run() === FALSE) {
+			$this->ratelimiter->hit('auth_register:'.$ip, $this->rate_limit_window('auth_register'));
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
 			redirect('register');
 			return;
@@ -70,6 +81,7 @@ class Auth extends MY_Controller
 		));
 
 		if (!$user_id) {
+			$this->ratelimiter->hit('auth_register:'.$ip, $this->rate_limit_window('auth_register'));
 			log_message('error', 'Registration failed: insert error for '.$email);
 			$this->session->set_flashdata('auth_error', 'Unable to create your account right now.');
 			redirect('register');
@@ -105,6 +117,7 @@ class Auth extends MY_Controller
 		}
 
 		log_message('info', 'Registration success: user_id='.$user_id.' email='.$email.' email_sent='.(int) $email_sent);
+		$this->ratelimiter->clear('auth_register:'.$ip);
 
 		$this->session->set_flashdata('verify_email', $email);
 		$this->session->set_flashdata('auth_success', 'Registration successful. Please verify your email before logging in.');
@@ -172,20 +185,39 @@ class Auth extends MY_Controller
 			return;
 		}
 
+		$ip = (string) $this->input->ip_address();
+		if ($this->is_rate_limited('auth_login_ip', 'auth_login_ip:'.$ip)) {
+			log_message('error', 'Login rate limit hit (ip)='.$ip);
+			$this->session->set_flashdata('auth_error', 'Too many login attempts. Please try again later.');
+			redirect('auth/login');
+			return;
+		}
+
 		$this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email|max_length[255]');
 		$this->form_validation->set_rules('password', 'Password', 'required');
 
 		if ($this->form_validation->run() === FALSE) {
+			$this->ratelimiter->hit('auth_login_ip:'.$ip, $this->rate_limit_window('auth_login_ip'));
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
 			redirect('auth/login');
 			return;
 		}
 
 		$email = strtolower(trim((string) $this->input->post('email', TRUE)));
+		$identity_key = 'auth_login_identity:'.hash('sha256', $email);
+		if ($this->is_rate_limited('auth_login_identity', $identity_key)) {
+			log_message('error', 'Login rate limit hit (identity hash) ip='.$ip);
+			$this->session->set_flashdata('auth_error', 'Too many login attempts for this account. Please try again later.');
+			redirect('auth/login');
+			return;
+		}
+
 		$password = (string) $this->input->post('password', FALSE);
 		$user = $this->user_model->find_by_email($email);
 
 		if (!$user) {
+			$this->ratelimiter->hit('auth_login_ip:'.$ip, $this->rate_limit_window('auth_login_ip'));
+			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_login_identity'));
 			log_message('error', 'Login failed: unknown email='.$email);
 			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
 			redirect('auth/login');
@@ -203,6 +235,8 @@ class Auth extends MY_Controller
 		if (!password_verify($password, (string) $user['password_hash'])) {
 			$this->user_model->record_failed_login($user_id);
 			$this->apply_lockout_if_needed($user);
+			$this->ratelimiter->hit('auth_login_ip:'.$ip, $this->rate_limit_window('auth_login_ip'));
+			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_login_identity'));
 			log_message('error', 'Login failed: bad password user_id='.$user_id);
 			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
 			redirect('auth/login');
@@ -210,6 +244,8 @@ class Auth extends MY_Controller
 		}
 
 		if ((string) $user['status'] !== 'active' || empty($user['email_verified_at'])) {
+			$this->ratelimiter->hit('auth_login_ip:'.$ip, $this->rate_limit_window('auth_login_ip'));
+			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_login_identity'));
 			log_message('error', 'Login blocked: unverified/inactive user_id='.$user_id);
 			$this->session->set_flashdata('auth_error', 'Please verify your email before logging in.');
 			redirect('auth/login');
@@ -219,6 +255,8 @@ class Auth extends MY_Controller
 		$this->user_model->clear_lock($user_id);
 		$this->user_model->touch_last_login($user_id);
 		$this->set_authenticated_session($user);
+		$this->ratelimiter->clear('auth_login_ip:'.$ip);
+		$this->ratelimiter->clear($identity_key);
 
 		log_message('info', 'Login success: user_id='.$user_id.' email='.$user['email']);
 		$this->session->set_flashdata('auth_success', 'Login successful.');
@@ -258,18 +296,37 @@ class Auth extends MY_Controller
 			return;
 		}
 
+		$ip = (string) $this->input->ip_address();
+		if ($this->is_rate_limited('auth_reset_request_ip', 'auth_reset_request_ip:'.$ip)) {
+			log_message('error', 'Password reset rate limit hit (ip)='.$ip);
+			$this->session->set_flashdata('auth_error', 'Too many reset requests. Please try again later.');
+			redirect('auth/forgot_password');
+			return;
+		}
+
 		$this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email|max_length[255]');
 		if ($this->form_validation->run() === FALSE) {
+			$this->ratelimiter->hit('auth_reset_request_ip:'.$ip, $this->rate_limit_window('auth_reset_request_ip'));
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
 			redirect('auth/forgot_password');
 			return;
 		}
 
 		$email = strtolower(trim((string) $this->input->post('email', TRUE)));
+		$identity_key = 'auth_reset_request_identity:'.hash('sha256', $email);
+		if ($this->is_rate_limited('auth_reset_request_identity', $identity_key)) {
+			log_message('error', 'Password reset rate limit hit (identity hash) ip='.$ip);
+			$this->session->set_flashdata('auth_error', 'Too many reset requests for this account. Please try again later.');
+			redirect('auth/forgot_password');
+			return;
+		}
+
 		$user = $this->user_model->find_by_email($email);
 		$generic_message = 'If an account exists for that email, a reset link has been sent.';
 
 		if (!$user || (string) $user['status'] === 'deleted') {
+			$this->ratelimiter->hit('auth_reset_request_ip:'.$ip, $this->rate_limit_window('auth_reset_request_ip'));
+			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 			log_message('error', 'Password reset requested for unknown/deleted account email='.$email);
 			$this->session->set_flashdata('auth_success', $generic_message);
 			redirect('auth/forgot_password');
@@ -291,6 +348,8 @@ class Auth extends MY_Controller
 
 		$saved = $this->user_model->set_password_reset_token((int) $user['id'], $token_hash, $expires_at);
 		if (!$saved) {
+			$this->ratelimiter->hit('auth_reset_request_ip:'.$ip, $this->rate_limit_window('auth_reset_request_ip'));
+			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 			log_message('error', 'Password reset token save failed for user_id='.$user['id']);
 			$this->session->set_flashdata('auth_error', 'Could not start password reset right now. Please try again.');
 			redirect('auth/forgot_password');
@@ -304,6 +363,8 @@ class Auth extends MY_Controller
 		}
 
 		log_message('info', 'Password reset requested: user_id='.$user['id'].' email_sent='.(int) $email_sent);
+		$this->ratelimiter->hit('auth_reset_request_ip:'.$ip, $this->rate_limit_window('auth_reset_request_ip'));
+		$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 		$this->session->set_flashdata('auth_success', $generic_message);
 		redirect('auth/forgot_password');
 	}
@@ -557,5 +618,31 @@ class Auth extends MY_Controller
 	{
 		$item = $this->config->item($key, 'auth');
 		return $item !== NULL ? $item : $default;
+	}
+
+	private function rate_limit_window($name)
+	{
+		$limits = $this->config->item('rate_limits', 'security_hardening');
+		if (!is_array($limits) || !isset($limits[$name]['window_seconds'])) {
+			return 60;
+		}
+
+		return max(1, (int) $limits[$name]['window_seconds']);
+	}
+
+	private function is_rate_limited($name, $key)
+	{
+		$limits = $this->config->item('rate_limits', 'security_hardening');
+		if (!is_array($limits) || !isset($limits[$name])) {
+			return FALSE;
+		}
+
+		$limit = isset($limits[$name]['limit']) ? (int) $limits[$name]['limit'] : 0;
+		$window = isset($limits[$name]['window_seconds']) ? (int) $limits[$name]['window_seconds'] : 60;
+		if ($limit <= 0) {
+			return FALSE;
+		}
+
+		return $this->ratelimiter->is_limited($key, $limit, $window);
 	}
 }

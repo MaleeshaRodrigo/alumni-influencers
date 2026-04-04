@@ -20,6 +20,7 @@ class BearerTokenAuth
 	{
 		$token = $this->extract_bearer_token();
 		if ($token === NULL || $token === '') {
+			log_message('error', 'Bearer auth failed: missing token route='.(string) $this->CI->uri->uri_string().' ip='.(string) $this->CI->input->ip_address());
 			return array(
 				'ok' => FALSE,
 				'code' => 401,
@@ -31,6 +32,7 @@ class BearerTokenAuth
 		$key_hash = hash('sha256', $token);
 		$api_key = $this->CI->api_key_model->find_valid_by_hash($key_hash);
 		if (!$api_key) {
+			log_message('error', 'Bearer auth failed: invalid token route='.(string) $this->CI->uri->uri_string().' ip='.(string) $this->CI->input->ip_address());
 			return array(
 				'ok' => FALSE,
 				'code' => 401,
@@ -42,6 +44,12 @@ class BearerTokenAuth
 		$scopes = $this->parse_scopes(isset($api_key['scopes']) ? (string) $api_key['scopes'] : '');
 		foreach ($required_scopes as $required_scope) {
 			if (!in_array((string) $required_scope, $scopes, TRUE)) {
+				log_message(
+					'error',
+					'Bearer auth failed: missing scope route='.(string) $this->CI->uri->uri_string().
+					' api_key_id='.(int) $api_key['id'].
+					' required_scope='.(string) $required_scope
+				);
 				return array(
 					'ok' => FALSE,
 					'code' => 403,
@@ -52,6 +60,7 @@ class BearerTokenAuth
 		}
 
 		$this->CI->api_key_model->touch_last_used((int) $api_key['id']);
+		log_message('info', 'Bearer auth success: route='.(string) $this->CI->uri->uri_string().' api_key_id='.(int) $api_key['id']);
 		return array(
 			'ok' => TRUE,
 			'code' => 200,
