@@ -47,10 +47,6 @@ PHP + CodeIgniter 3 + MySQL coursework application covering:
 
 ## Documentation Index
 
-- API overview: `docs/API_OVERVIEW.md`
-- Feature checklist (rubric mapping): `docs/FEATURE_CHECKLIST.md`
-- Viva checklist: `docs/VIVA_CHECKLIST.md`
-- Database schema notes: `docs/DB_SCHEMA.md`
 - OpenAPI spec: `docs/openapi.yaml`
 
 ## Security Highlights
