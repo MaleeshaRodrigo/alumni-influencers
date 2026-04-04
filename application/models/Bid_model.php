@@ -301,6 +301,164 @@ class Bid_model extends CI_Model {
 		return $this->db->query($sql, array($user_id))->result_array();
 	}
 
+	public function run_daily_winner($cycle_id, array $meta = array())
+	{
+		$cycle_id = (int) $cycle_id;
+		$cycle_dt = $this->cycle_datetime_from_id($cycle_id);
+		$lock_key = 'bids_daily_winner_'.$cycle_id;
+
+		if (!$this->acquire_cycle_lock($lock_key)) {
+			log_message('error', 'Winner selection lock failed for cycle_id='.$cycle_id);
+			return array(
+				'ok' => FALSE,
+				'status' => 'lock_failed',
+				'cycle_id' => $cycle_id
+			);
+		}
+
+		$this->db->trans_begin();
+
+		$existing_feature = $this->feature_model->get_by_cycle($cycle_id);
+		if ($existing_feature) {
+			$this->db->trans_rollback();
+			$this->release_cycle_lock($lock_key);
+			log_message('info', 'Winner selection skipped: already selected for cycle_id='.$cycle_id);
+			return array(
+				'ok' => TRUE,
+				'status' => 'already_selected',
+				'cycle_id' => $cycle_id,
+				'feature_id' => (int) $existing_feature['id']
+			);
+		}
+
+		$existing_winner = $this->db
+			->where('cycle_id', $cycle_id)
+			->where('status', 'won')
+			->limit(1)
+			->get($this->table)
+			->row_array();
+		if ($existing_winner) {
+			$this->db->trans_rollback();
+			$this->release_cycle_lock($lock_key);
+			log_message('info', 'Winner selection skipped: won bid already exists for cycle_id='.$cycle_id);
+			return array(
+				'ok' => TRUE,
+				'status' => 'already_selected',
+				'cycle_id' => $cycle_id,
+				'bid_id' => (int) $existing_winner['id']
+			);
+		}
+
+		$candidates = $this->db
+			->query(
+				'SELECT * FROM `'.$this->table.'` WHERE `cycle_id` = ? AND `status` = "submitted" ORDER BY `amount` DESC, `submitted_at` ASC, `id` ASC FOR UPDATE',
+				array($cycle_id)
+			)
+			->result_array();
+
+		if (empty($candidates)) {
+			$this->db->trans_rollback();
+			$this->release_cycle_lock($lock_key);
+			log_message('info', 'Winner selection found no submitted bids for cycle_id='.$cycle_id);
+			return array(
+				'ok' => TRUE,
+				'status' => 'no_bids',
+				'cycle_id' => $cycle_id
+			);
+		}
+
+		$winner = NULL;
+		$winner_profile_id = 0;
+		$winner_eligibility = NULL;
+
+		foreach ($candidates as $candidate) {
+			$profile_id = $this->profile_id_for_user((int) $candidate['user_id']);
+			if ($profile_id <= 0) {
+				log_message('error', 'Winner candidate skipped (no profile): bid_id='.(int) $candidate['id']);
+				continue;
+			}
+
+			$eligibility = $this->feature_model->monthly_eligibility_for_profile($profile_id, $cycle_dt);
+			if (!$eligibility['can_win_more']) {
+				log_message(
+					'info',
+					'Winner candidate skipped (monthly cap): bid_id='.(int) $candidate['id'].
+					' user_id='.(int) $candidate['user_id'].
+					' wins='.(int) $eligibility['wins_this_month'].
+					' max='.(int) $eligibility['max_slots']
+				);
+				continue;
+			}
+
+			$winner = $candidate;
+			$winner_profile_id = $profile_id;
+			$winner_eligibility = $eligibility;
+			break;
+		}
+
+		if (!$winner) {
+			$this->db->trans_rollback();
+			$this->release_cycle_lock($lock_key);
+			log_message('info', 'Winner selection found no eligible candidates for cycle_id='.$cycle_id);
+			return array(
+				'ok' => TRUE,
+				'status' => 'no_eligible_bids',
+				'cycle_id' => $cycle_id
+			);
+		}
+
+		$winner_id = (int) $winner['id'];
+		$winner_user_id = (int) $winner['user_id'];
+
+		$mark_winner_ok = $this->db
+			->where('id', $winner_id)
+			->update($this->table, array(
+				'status' => 'won'
+			));
+
+		$mark_others_ok = $this->db
+			->where('cycle_id', $cycle_id)
+			->where('status', 'submitted')
+			->where('id !=', $winner_id)
+			->update($this->table, array(
+				'status' => 'lost'
+			));
+
+		$feature_id = $this->feature_model->create_featured_for_winner($winner_profile_id, $cycle_id, $winner_id, $cycle_dt);
+		if (!$feature_id || !$mark_winner_ok || $mark_others_ok === FALSE || $this->db->trans_status() === FALSE) {
+			$this->db->trans_rollback();
+			$this->release_cycle_lock($lock_key);
+			log_message('error', 'Winner selection failed during DB update for cycle_id='.$cycle_id);
+			return array(
+				'ok' => FALSE,
+				'status' => 'db_error',
+				'cycle_id' => $cycle_id
+			);
+		}
+
+		$this->db->trans_commit();
+		$this->release_cycle_lock($lock_key);
+
+		log_message(
+			'info',
+			'Winner selected: cycle_id='.$cycle_id.
+			' winner_bid_id='.$winner_id.
+			' winner_user_id='.$winner_user_id.
+			' feature_id='.(int) $feature_id
+		);
+
+		return array(
+			'ok' => TRUE,
+			'status' => 'winner_selected',
+			'cycle_id' => $cycle_id,
+			'winner_bid_id' => $winner_id,
+			'winner_user_id' => $winner_user_id,
+			'feature_id' => (int) $feature_id,
+			'remaining_slots_after_win' => isset($winner_eligibility['remaining_slots']) ? max(0, (int) $winner_eligibility['remaining_slots'] - 1) : NULL,
+			'meta' => $meta
+		);
+	}
+
 	private function profile_id_for_user($user_id)
 	{
 		$row = $this->db
@@ -311,5 +469,31 @@ class Bid_model extends CI_Model {
 			->row_array();
 
 		return $row ? (int) $row['id'] : 0;
+	}
+
+	private function cycle_datetime_from_id($cycle_id)
+	{
+		$cycle_id = (int) $cycle_id;
+		$cycle_str = (string) $cycle_id;
+		if (preg_match('/^[0-9]{8}$/', $cycle_str)) {
+			$dt = DateTime::createFromFormat('Ymd', $cycle_str);
+			if ($dt) {
+				$dt->setTime(12, 0, 0);
+				return $dt;
+			}
+		}
+
+		return new DateTime();
+	}
+
+	private function acquire_cycle_lock($lock_key)
+	{
+		$row = $this->db->query('SELECT GET_LOCK(?, 5) AS lck', array((string) $lock_key))->row_array();
+		return isset($row['lck']) && (int) $row['lck'] === 1;
+	}
+
+	private function release_cycle_lock($lock_key)
+	{
+		$this->db->query('SELECT RELEASE_LOCK(?)', array((string) $lock_key));
 	}
 }

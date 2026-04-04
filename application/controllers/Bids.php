@@ -132,4 +132,64 @@ class Bids extends MY_Controller
 
 		$this->render('bids/history', $data);
 	}
+
+	public function run_daily_winner($cycle_id = NULL)
+	{
+		$auth = $this->authorize_winner_run();
+		if ($cycle_id === NULL) {
+			$cycle_id = (int) $this->input->get('cycle_id', TRUE);
+		} else {
+			$cycle_id = (int) $cycle_id;
+		}
+		if ($cycle_id <= 0) {
+			$cycle_id = $this->bid_model->current_cycle_id();
+		}
+
+		$result = $this->bid_model->run_daily_winner($cycle_id, $auth);
+		log_message(
+			'info',
+			'run_daily_winner executed: cycle_id='.$cycle_id.
+			' status='.$result['status'].
+			' trigger='.$auth['trigger']
+		);
+
+		if (is_cli()) {
+			echo json_encode($result, JSON_PRETTY_PRINT).PHP_EOL;
+			return;
+		}
+
+		$this->output
+			->set_content_type('application/json')
+			->set_output(json_encode($result));
+	}
+
+	private function authorize_winner_run()
+	{
+		if (is_cli()) {
+			return array(
+				'trigger' => 'cli',
+				'actor_user_id' => 0
+			);
+		}
+
+		$user = $this->require_verified_user();
+		if (!isset($user['role']) || (string) $user['role'] !== 'admin') {
+			log_message('error', 'run_daily_winner forbidden: non-admin user_id='.(int) $user['id']);
+			show_error('Forbidden', 403);
+		}
+
+		$expected_key = getenv('BIDS_ADMIN_KEY');
+		if ($expected_key !== FALSE && $expected_key !== '') {
+			$provided = (string) $this->input->get('key', TRUE);
+			if (!hash_equals((string) $expected_key, $provided)) {
+				log_message('error', 'run_daily_winner forbidden: invalid admin key user_id='.(int) $user['id']);
+				show_error('Forbidden', 403);
+			}
+		}
+
+		return array(
+			'trigger' => 'web_admin',
+			'actor_user_id' => (int) $user['id']
+		);
+	}
 }

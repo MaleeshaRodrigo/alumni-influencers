@@ -23,6 +23,25 @@ class Feature_model extends CI_Model {
 			->row_array();
 	}
 
+	public function get_by_cycle($cycle_id)
+	{
+		return $this->db
+			->where('cycle_id', (int) $cycle_id)
+			->limit(1)
+			->get($this->table)
+			->row_array();
+	}
+
+	public function has_feature_for_cycle($cycle_id)
+	{
+		return (bool) $this->db
+			->select('id')
+			->where('cycle_id', (int) $cycle_id)
+			->limit(1)
+			->get($this->table)
+			->row_array();
+	}
+
 	public function list_active(?DateTime $at = NULL)
 	{
 		if ($at === NULL) {
@@ -145,5 +164,25 @@ class Feature_model extends CI_Model {
 			'remaining_slots' => $remaining,
 			'can_win_more' => $remaining > 0
 		);
+	}
+
+	public function create_featured_for_winner($profile_id, $cycle_id, $winning_bid_id, ?DateTime $at = NULL)
+	{
+		if ($at === NULL) {
+			$at = new DateTime();
+		}
+
+		$from = $at->format('Y-m-d H:i:s');
+		$until = (clone $at)->modify('+1 day')->format('Y-m-d H:i:s');
+
+		return $this->create(array(
+			'profile_id' => (int) $profile_id,
+			'cycle_id' => (int) $cycle_id,
+			'winning_bid_id' => (int) $winning_bid_id,
+			'featured_from' => $from,
+			'featured_until' => $until,
+			'sort_order' => 0,
+			'is_active' => 1
+		));
 	}
 }
