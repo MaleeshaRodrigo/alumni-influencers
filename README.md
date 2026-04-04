@@ -23,7 +23,7 @@ PHP + CodeIgniter 3 + MySQL coursework application covering:
    - DB credentials
    - `APP_ENCRYPTION_KEY`
 4. Import schema:
-   - `database/coursework_schema.sql`
+  - `database/schema.sql`
 5. Ensure `ci_sessions` table exists (included in schema).
 6. Open app:
    - `http://localhost/alumni-influencers/`
