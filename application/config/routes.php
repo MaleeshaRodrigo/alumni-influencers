@@ -105,3 +105,6 @@ $route['bids/history'] = 'bids/history';
 
 $route['api/featured-today'] = 'publicapi/featured_today';
 $route['publicapi/featured-today'] = 'publicapi/featured_today';
+
+$route['api-docs'] = 'apidocs/index';
+$route['api-docs/openapi.yaml'] = 'apidocs/openapi';
