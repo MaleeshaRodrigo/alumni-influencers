@@ -2,7 +2,9 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
- * Registration and email verification only (Step 3 scope).
+ * Authentication controller:
+ * - Step 3: registration + email verification
+ * - Step 4: login/logout + password reset
  *
  * @property CI_Input $input
  * @property CI_Session $session
@@ -82,6 +84,7 @@ class Auth extends MY_Controller
 			redirect('register');
 			return;
 		}
+
 		$token_hash = hash('sha256', $raw_token);
 		$ttl_seconds = (int) $this->auth_config_item('verification_token_ttl_seconds', 86400);
 		$expires_at = new DateTime('+'.$ttl_seconds.' seconds');
@@ -94,7 +97,7 @@ class Auth extends MY_Controller
 			return;
 		}
 
-		$verification_link = site_url('auth/verify-email/'.$raw_token);
+		$verification_link = site_url('auth/verify_email/'.$raw_token);
 		$email_sent = $this->send_verification_email($email, $verification_link, $expires_at);
 
 		if (!$email_sent && ENVIRONMENT !== 'production') {
@@ -105,7 +108,7 @@ class Auth extends MY_Controller
 
 		$this->session->set_flashdata('verify_email', $email);
 		$this->session->set_flashdata('auth_success', 'Registration successful. Please verify your email before logging in.');
-		redirect('auth/verify-notice');
+		redirect('auth/verify_notice');
 	}
 
 	public function verify_notice()
@@ -148,7 +151,247 @@ class Auth extends MY_Controller
 
 		log_message('info', 'Email verification success: user_id='.$user['id'].' email='.$user['email']);
 		$this->session->set_flashdata('auth_success', 'Email verified successfully. You can now log in.');
-		redirect('register');
+		redirect('auth/login');
+	}
+
+	public function login()
+	{
+		if ($this->is_authenticated()) {
+			redirect('home');
+			return;
+		}
+
+		$data = array('page_title' => 'Login');
+		$this->render('auth/login', $data);
+	}
+
+	public function do_login()
+	{
+		if (strtoupper($this->input->method()) !== 'POST') {
+			redirect('auth/login');
+			return;
+		}
+
+		$this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email|max_length[255]');
+		$this->form_validation->set_rules('password', 'Password', 'required');
+
+		if ($this->form_validation->run() === FALSE) {
+			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
+			redirect('auth/login');
+			return;
+		}
+
+		$email = strtolower(trim((string) $this->input->post('email', TRUE)));
+		$password = (string) $this->input->post('password', FALSE);
+		$user = $this->user_model->find_by_email($email);
+
+		if (!$user) {
+			log_message('error', 'Login failed: unknown email='.$email);
+			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
+			redirect('auth/login');
+			return;
+		}
+
+		$user_id = (int) $user['id'];
+		if (!empty($user['locked_until']) && strtotime((string) $user['locked_until']) > time()) {
+			log_message('error', 'Login blocked: account locked user_id='.$user_id);
+			$this->session->set_flashdata('auth_error', 'Account temporarily locked. Try again later.');
+			redirect('auth/login');
+			return;
+		}
+
+		if (!password_verify($password, (string) $user['password_hash'])) {
+			$this->user_model->record_failed_login($user_id);
+			$this->apply_lockout_if_needed($user);
+			log_message('error', 'Login failed: bad password user_id='.$user_id);
+			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
+			redirect('auth/login');
+			return;
+		}
+
+		if ((string) $user['status'] !== 'active' || empty($user['email_verified_at'])) {
+			log_message('error', 'Login blocked: unverified/inactive user_id='.$user_id);
+			$this->session->set_flashdata('auth_error', 'Please verify your email before logging in.');
+			redirect('auth/login');
+			return;
+		}
+
+		$this->user_model->clear_lock($user_id);
+		$this->user_model->touch_last_login($user_id);
+		$this->set_authenticated_session($user);
+
+		log_message('info', 'Login success: user_id='.$user_id.' email='.$user['email']);
+		$this->session->set_flashdata('auth_success', 'Login successful.');
+		redirect('home');
+	}
+
+	public function logout()
+	{
+		$user_id = (int) $this->session->userdata('auth_user_id');
+
+		$this->session->unset_userdata(array(
+			'auth_user_id',
+			'auth_role',
+			'is_authenticated',
+			'logged_in_at'
+		));
+		$this->session->sess_regenerate(TRUE);
+
+		if ($user_id > 0) {
+			log_message('info', 'Logout success: user_id='.$user_id);
+		}
+
+		$this->session->set_flashdata('auth_success', 'You have been logged out.');
+		redirect('auth/login');
+	}
+
+	public function forgot_password()
+	{
+		$data = array('page_title' => 'Forgot Password');
+		$this->render('auth/forgot_password', $data);
+	}
+
+	public function send_reset()
+	{
+		if (strtoupper($this->input->method()) !== 'POST') {
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		$this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email|max_length[255]');
+		if ($this->form_validation->run() === FALSE) {
+			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		$email = strtolower(trim((string) $this->input->post('email', TRUE)));
+		$user = $this->user_model->find_by_email($email);
+		$generic_message = 'If an account exists for that email, a reset link has been sent.';
+
+		if (!$user || (string) $user['status'] === 'deleted') {
+			log_message('error', 'Password reset requested for unknown/deleted account email='.$email);
+			$this->session->set_flashdata('auth_success', $generic_message);
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		try {
+			$raw_token = bin2hex(random_bytes(32));
+		} catch (Exception $e) {
+			log_message('error', 'Password reset token generation failed for user_id='.$user['id'].' - '.$e->getMessage());
+			$this->session->set_flashdata('auth_error', 'Could not start password reset right now. Please try again.');
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		$token_hash = hash('sha256', $raw_token);
+		$ttl_seconds = (int) $this->auth_config_item('password_reset_ttl_seconds', 3600);
+		$expires_at = new DateTime('+'.$ttl_seconds.' seconds');
+
+		$saved = $this->user_model->set_password_reset_token((int) $user['id'], $token_hash, $expires_at);
+		if (!$saved) {
+			log_message('error', 'Password reset token save failed for user_id='.$user['id']);
+			$this->session->set_flashdata('auth_error', 'Could not start password reset right now. Please try again.');
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		$reset_link = site_url('auth/reset_password/'.$raw_token);
+		$email_sent = $this->send_reset_email((string) $user['email'], $reset_link, $expires_at);
+		if (!$email_sent && ENVIRONMENT !== 'production') {
+			$this->session->set_flashdata('dev_reset_link', $reset_link);
+		}
+
+		log_message('info', 'Password reset requested: user_id='.$user['id'].' email_sent='.(int) $email_sent);
+		$this->session->set_flashdata('auth_success', $generic_message);
+		redirect('auth/forgot_password');
+	}
+
+	public function reset_password($token = NULL)
+	{
+		$token = is_string($token) ? trim($token) : '';
+		if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+			log_message('error', 'Password reset failed: malformed token');
+			$this->session->set_flashdata('auth_error', 'Invalid reset link.');
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		$token_hash = hash('sha256', $token);
+		$user = $this->user_model->find_active_password_reset_token($token_hash);
+		if (!$user) {
+			log_message('error', 'Password reset failed: invalid/expired token');
+			$this->session->set_flashdata('auth_error', 'Reset link is invalid or expired.');
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		$data = array(
+			'page_title' => 'Reset Password',
+			'token' => $token
+		);
+		$this->render('auth/reset_password', $data);
+	}
+
+	public function do_reset_password()
+	{
+		if (strtoupper($this->input->method()) !== 'POST') {
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		$this->form_validation->set_rules('token', 'Token', 'required');
+		$this->form_validation->set_rules('password', 'Password', 'required|callback__strong_password');
+		$this->form_validation->set_rules('password_confirm', 'Confirm Password', 'required|matches[password]');
+
+		$token = trim((string) $this->input->post('token', TRUE));
+
+		if ($this->form_validation->run() === FALSE) {
+			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
+			redirect('auth/reset_password/'.$token);
+			return;
+		}
+
+		if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
+			log_message('error', 'Password reset submit failed: malformed token');
+			$this->session->set_flashdata('auth_error', 'Invalid reset token.');
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		$token_hash = hash('sha256', $token);
+		$user = $this->user_model->find_active_password_reset_token($token_hash);
+		if (!$user) {
+			log_message('error', 'Password reset submit failed: expired/invalid token');
+			$this->session->set_flashdata('auth_error', 'Reset token is invalid or expired.');
+			redirect('auth/forgot_password');
+			return;
+		}
+
+		$new_password = (string) $this->input->post('password', FALSE);
+		$new_hash = password_hash($new_password, PASSWORD_DEFAULT);
+		if ($new_hash === FALSE) {
+			log_message('error', 'Password reset failed: hash error user_id='.$user['id']);
+			$this->session->set_flashdata('auth_error', 'Could not update password right now.');
+			redirect('auth/reset_password/'.$token);
+			return;
+		}
+
+		$updated = $this->user_model->update_password_hash((int) $user['id'], $new_hash);
+		if (!$updated) {
+			log_message('error', 'Password reset failed: DB update error user_id='.$user['id']);
+			$this->session->set_flashdata('auth_error', 'Could not update password right now.');
+			redirect('auth/reset_password/'.$token);
+			return;
+		}
+
+		$this->user_model->clear_password_reset_token((int) $user['id']);
+		$this->user_model->clear_lock((int) $user['id']);
+
+		log_message('info', 'Password reset success: user_id='.$user['id']);
+		$this->session->set_flashdata('auth_success', 'Password updated. You can now log in.');
+		redirect('auth/login');
 	}
 
 	public function _email_domain_allowed($email)
@@ -232,6 +475,67 @@ class Auth extends MY_Controller
 		}
 
 		return FALSE;
+	}
+
+	private function send_reset_email($to_email, $reset_link, DateTime $expires_at)
+	{
+		$this->load->library('email');
+
+		$from_email = getenv('MAIL_FROM') ? getenv('MAIL_FROM') : 'no-reply@alumni-influencers.local';
+		$from_name = getenv('MAIL_FROM_NAME') ? getenv('MAIL_FROM_NAME') : 'Alumni Influencers';
+
+		$this->email->clear(TRUE);
+		$this->email->from($from_email, $from_name);
+		$this->email->to($to_email);
+		$this->email->subject('Reset your Alumni Influencers password');
+		$this->email->message(
+			"You requested a password reset.\n\n".
+			"Open this link to set a new password:\n".$reset_link."\n\n".
+			"This link expires at ".$expires_at->format('Y-m-d H:i:s').".\n"
+		);
+
+		$sent = $this->email->send(FALSE);
+		if ($sent) {
+			return TRUE;
+		}
+
+		log_message('error', 'Reset email send failed for '.$to_email);
+		if (ENVIRONMENT !== 'production') {
+			log_message('info', 'DEV reset link for '.$to_email.': '.$reset_link);
+		}
+
+		return FALSE;
+	}
+
+	private function set_authenticated_session(array $user)
+	{
+		$this->session->sess_regenerate(TRUE);
+		$this->session->set_userdata(array(
+			'auth_user_id' => (int) $user['id'],
+			'auth_role' => (string) $user['role'],
+			'is_authenticated' => TRUE,
+			'logged_in_at' => date('Y-m-d H:i:s')
+		));
+	}
+
+	private function apply_lockout_if_needed(array $user)
+	{
+		$max_attempts = (int) $this->auth_config_item('max_failed_logins', 5);
+		$lock_minutes = (int) $this->auth_config_item('lockout_minutes', 15);
+		$next_count = (int) $user['failed_login_count'] + 1;
+
+		if ($next_count < $max_attempts) {
+			return;
+		}
+
+		$locked_until = new DateTime('+'.$lock_minutes.' minutes');
+		$this->user_model->set_locked_until((int) $user['id'], $locked_until);
+		log_message('error', 'Account lock applied: user_id='.$user['id'].' until='.$locked_until->format('Y-m-d H:i:s'));
+	}
+
+	private function is_authenticated()
+	{
+		return (bool) $this->session->userdata('is_authenticated');
 	}
 
 	private function allowed_email_domains()
