@@ -20,11 +20,24 @@
 		</div>
 	<?php endif; ?>
 
+	<?php if (!empty($eligibility)): ?>
+		<div style="margin:12px 0; padding:10px; border:1px solid #93c5fd; background:#eff6ff; color:#1e40af; border-radius:6px;">
+			Remaining feature opportunities this month:
+			<strong><?php echo (int) $eligibility['remaining_slots']; ?></strong>
+			(out of <?php echo (int) $eligibility['max_slots']; ?>)<br>
+			Event bonus eligibility:
+			<strong><?php echo !empty($eligibility['has_event_bonus']) ? 'Yes' : 'No'; ?></strong>
+		</div>
+	<?php endif; ?>
+
 	<p style="color:#555;">
 		For blind bidding fairness, bid amounts are never displayed here.
 	</p>
 
 	<p style="margin-top:16px;">
 		<a href="<?php echo site_url('bids/place'); ?>">Place or increase your bid</a>
+	</p>
+	<p>
+		<a href="<?php echo site_url('bids/history'); ?>">View bid history</a>
 	</p>
 </section>

@@ -29,11 +29,13 @@ class Bids extends MY_Controller
 		$user = $this->require_verified_user();
 		$cycle_id = $this->bid_model->current_cycle_id();
 		$current_bid = $this->bid_model->get_by_user_and_cycle((int) $user['id'], $cycle_id);
+		$eligibility = $this->bid_model->monthly_eligibility_for_user((int) $user['id']);
 
 		$data = array(
 			'page_title' => 'Place Blind Bid',
 			'cycle_id' => $cycle_id,
-			'current_bid' => $current_bid
+			'current_bid' => $current_bid,
+			'eligibility' => $eligibility
 		);
 
 		$this->render('bids/place_bid', $data);
@@ -65,6 +67,16 @@ class Bids extends MY_Controller
 		$result = $this->bid_model->place_or_increase_for_cycle((int) $user['id'], $cycle_id, $amount, 'GBP');
 
 		if (!$result['ok']) {
+			if (isset($result['eligibility'])) {
+				log_message(
+					'info',
+					'Bid blocked by monthly eligibility: user_id='.(int) $user['id'].
+					' wins='.(int) $result['eligibility']['wins_this_month'].
+					' max='.(int) $result['eligibility']['max_slots'].
+					' remaining='.(int) $result['eligibility']['remaining_slots'].
+					' bonus='.(int) $result['eligibility']['has_event_bonus']
+				);
+			}
 			log_message('error', 'Bid action failed: user_id='.(int) $user['id'].' cycle_id='.$cycle_id.' reason='.$result['error']);
 			$this->session->set_flashdata('bid_error', $result['error']);
 			redirect('bids/place');
@@ -85,13 +97,39 @@ class Bids extends MY_Controller
 		$user = $this->require_verified_user();
 		$cycle_id = $this->bid_model->current_cycle_id();
 		$status = $this->bid_model->blind_status_for_user_cycle((int) $user['id'], $cycle_id);
+		$eligibility = $this->bid_model->monthly_eligibility_for_user((int) $user['id']);
 
 		$data = array(
 			'page_title' => 'Bid Status',
 			'cycle_id' => $cycle_id,
-			'bid_status' => $status
+			'bid_status' => $status,
+			'eligibility' => $eligibility
 		);
 
 		$this->render('bids/bid_status', $data);
+	}
+
+	public function history()
+	{
+		$user = $this->require_verified_user();
+		$history = $this->bid_model->history_for_user((int) $user['id'], 50);
+		$eligibility = $this->bid_model->monthly_eligibility_for_user((int) $user['id']);
+
+		log_message(
+			'info',
+			'Bid history viewed: user_id='.(int) $user['id'].
+			' wins='.(int) $eligibility['wins_this_month'].
+			' max='.(int) $eligibility['max_slots'].
+			' remaining='.(int) $eligibility['remaining_slots'].
+			' bonus='.(int) $eligibility['has_event_bonus']
+		);
+
+		$data = array(
+			'page_title' => 'Bid History',
+			'history' => $history,
+			'eligibility' => $eligibility
+		);
+
+		$this->render('bids/history', $data);
 	}
 }

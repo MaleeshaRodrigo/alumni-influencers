@@ -101,3 +101,4 @@ $route['bids'] = 'bids/index';
 $route['bids/place'] = 'bids/place';
 $route['bids/store'] = 'bids/store';
 $route['bids/status'] = 'bids/status';
+$route['bids/history'] = 'bids/history';

@@ -12,6 +12,7 @@ class Bid_model extends CI_Model {
 	{
 		parent::__construct();
 		$this->load->database();
+		$this->load->model('Feature_model', 'feature_model');
 	}
 
 	public function get_by_id($id)
@@ -140,6 +141,15 @@ class Bid_model extends CI_Model {
 			return array('ok' => FALSE, 'error' => 'Bid must be greater than zero.');
 		}
 
+		$eligibility = $this->monthly_eligibility_for_user($user_id);
+		if (!$eligibility['can_win_more']) {
+			return array(
+				'ok' => FALSE,
+				'error' => 'Monthly featured win limit reached. Remaining slots: 0.',
+				'eligibility' => $eligibility
+			);
+		}
+
 		$this->db->trans_begin();
 		$row = $this->db
 			->query(
@@ -233,5 +243,73 @@ class Bid_model extends CI_Model {
 			'status' => $is_winning ? 'winning' : 'losing',
 			'cycle_id' => (int) $cycle_id
 		);
+	}
+
+	public function monthly_eligibility_for_user($user_id, ?DateTime $at = NULL)
+	{
+		$profile_id = $this->profile_id_for_user((int) $user_id);
+		if ($profile_id <= 0) {
+			return array(
+				'month' => ($at ?: new DateTime())->format('Y-m'),
+				'wins_this_month' => 0,
+				'has_event_bonus' => FALSE,
+				'max_slots' => 3,
+				'remaining_slots' => 0,
+				'can_win_more' => FALSE,
+				'reason' => 'Profile not found'
+			);
+		}
+
+		return $this->feature_model->monthly_eligibility_for_profile($profile_id, $at);
+	}
+
+	public function remaining_monthly_slots_for_user($user_id, ?DateTime $at = NULL)
+	{
+		$eligibility = $this->monthly_eligibility_for_user((int) $user_id, $at);
+		return (int) $eligibility['remaining_slots'];
+	}
+
+	public function history_for_user($user_id, $limit = 30)
+	{
+		$user_id = (int) $user_id;
+		$limit = max(1, (int) $limit);
+
+		$sql = '
+			SELECT
+				b.id,
+				b.cycle_id,
+				b.amount,
+				b.currency,
+				b.status,
+				b.submitted_at,
+				b.created_at,
+				CASE
+					WHEN b.amount >= (
+						SELECT MAX(b2.amount)
+						FROM `'.$this->table.'` b2
+						WHERE b2.cycle_id = b.cycle_id
+						  AND b2.status IN ("submitted","won","lost")
+					) THEN "winning"
+					ELSE "losing"
+				END AS blind_status
+			FROM `'.$this->table.'` b
+			WHERE b.user_id = ?
+			  AND b.status IN ("submitted","won","lost")
+			ORDER BY b.cycle_id DESC, b.id DESC
+			LIMIT '.$limit;
+
+		return $this->db->query($sql, array($user_id))->result_array();
+	}
+
+	private function profile_id_for_user($user_id)
+	{
+		$row = $this->db
+			->select('id')
+			->where('user_id', (int) $user_id)
+			->limit(1)
+			->get('profiles')
+			->row_array();
+
+		return $row ? (int) $row['id'] : 0;
 	}
 }
