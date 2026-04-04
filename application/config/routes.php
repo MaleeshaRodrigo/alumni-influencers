@@ -55,3 +55,9 @@ $route['translate_uri_dashes'] = FALSE;
 
 $route['home'] = 'home/index';
 $route['ping'] = 'home/ping';
+
+$route['register'] = 'auth/register';
+$route['auth/register'] = 'auth/register';
+$route['auth/do-register'] = 'auth/do_register';
+$route['auth/verify-notice'] = 'auth/verify_notice';
+$route['auth/verify-email/(:any)'] = 'auth/verify_email/$1';
