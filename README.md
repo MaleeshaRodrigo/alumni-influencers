@@ -1,86 +1,72 @@
-# Alumni Influencers Project
+# Alumni Influencers (CodeIgniter 3 Coursework)
 
-This repository is prepared for a PHP + CodeIgniter 3 + MySQL setup on XAMPP with strict MVC structure.
+PHP + CodeIgniter 3 + MySQL coursework application covering:
+- university-email authentication and account verification,
+- profile management and secure media upload,
+- blind bidding + automated featured alumnus selection,
+- API key lifecycle + usage logging,
+- public developer API + Swagger/OpenAPI docs.
 
-## Step 1 Scope Completed
+## Tech Stack
 
-- Project foundation and configuration
-- Local XAMPP-ready CodeIgniter configuration
-- Database-backed sessions
-- Base controller and starter layout
-- Home page route and health check endpoint
+- PHP (XAMPP runtime)
+- CodeIgniter 3
+- MySQL / MariaDB
+- Swagger UI (CDN-hosted) for API documentation
 
-## Recommended Project Structure
+## Quick Start (Local XAMPP)
 
-```text
-alumni-influencers/
-├── application/
-│   ├── config/
-│   │   ├── autoload.php
-│   │   ├── config.php
-│   │   ├── database.php
-│   │   └── routes.php
-│   ├── controllers/
-│   │   └── Home.php
-│   ├── core/
-│   │   └── MY_Controller.php
-│   ├── models/
-│   │   ├── Auth_model.php            (future)
-│   │   ├── User_model.php            (future)
-│   │   ├── Bid_model.php             (future)
-│   │   └── ApiKey_model.php          (future)
-│   ├── views/
-│   │   ├── home/
-│   │   │   └── index.php
-│   │   └── layouts/
-│   │       ├── footer.php
-│   │       └── header.php
-│   ├── logs/
-│   └── helpers/                      (future shared helpers)
-├── system/
-├── .env                              (local secrets, ignored)
-├── .env.example
-├── index.php
-└── README.md
-```
-
-## Local XAMPP Setup
-
-1. Put this project under your XAMPP `htdocs` directory.
-2. Start **Apache** and **MySQL** from XAMPP Control Panel.
-3. Create your environment file:
-   - Copy `.env.example` to `.env`
-   - Update values if needed (especially `APP_BASE_URL`, DB values, and `APP_ENCRYPTION_KEY`)
-4. Create database:
-   - DB name from `.env` (default: `alumni-influencers`)
-5. Create session table (`ci_sessions`) using SQL below.
-6. Open in browser:
+1. Place project in `xampp/htdocs/alumni-influencers`.
+2. Start Apache and MySQL from XAMPP.
+3. Create `.env` from `.env.example` and set:
+   - `APP_BASE_URL`
+   - DB credentials
+   - `APP_ENCRYPTION_KEY`
+4. Import schema:
+   - `database/coursework_schema.sql`
+5. Ensure `ci_sessions` table exists (included in schema).
+6. Open app:
    - `http://localhost/alumni-influencers/`
 
-## Session Table SQL (Required)
+## Main URLs
 
-```sql
-CREATE TABLE IF NOT EXISTS `ci_sessions` (
-  `id` varchar(128) NOT NULL,
-  `ip_address` varchar(45) NOT NULL,
-  `timestamp` int(10) unsigned NOT NULL DEFAULT 0,
-  `data` blob NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `ci_sessions_timestamp` (`timestamp`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-```
+- App home: `/`
+- Auth:
+  - `/register`
+  - `/auth/login`
+- Profile dashboard: `/profile/dashboard`
+- Blind bidding:
+  - `/bids/place`
+  - `/bids/status`
+- Public API:
+  - `/api/featured-today`
+- Swagger UI:
+  - `/api-docs`
+- OpenAPI spec:
+  - `/api-docs/openapi.yaml`
 
-## Routes Available
+## Documentation Index
 
-- `/` -> `Home::index`
-- `/home` -> `Home::index`
-- `/ping` -> JSON health check
+- API overview: `docs/API_OVERVIEW.md`
+- Feature checklist (rubric mapping): `docs/FEATURE_CHECKLIST.md`
+- Viva checklist: `docs/VIVA_CHECKLIST.md`
+- Database schema notes: `docs/DB_SCHEMA.md`
+- OpenAPI spec: `docs/openapi.yaml`
 
-## Notes
+## Security Highlights
 
-- Strict MVC is maintained:
-  - Controllers stay thin
-  - Business/data logic belongs in models (to be added in next steps)
-  - Views remain simple presentation templates
-- `.env` values are loaded at runtime in `index.php`
-- Logging is enabled through `LOG_THRESHOLD` (default 1)
+- Password hashing via `password_hash()` / `password_verify()`
+- Verification and reset tokens stored as SHA-256 hashes only
+- CSRF protection enabled
+- Session hardening and regeneration
+- Rate limiting for login/reset/register/public API
+- Security headers via CI hooks
+- API key hash-only storage + revocation + usage audit logging
+
+## Notes for Assessors
+
+- This project intentionally keeps CI3 MVC layering clear:
+  - controllers orchestrate flow,
+  - models hold data/business rules,
+  - views remain presentation-focused.
+- Logs are written through CodeIgniter `log_message()` for critical security and business events.
