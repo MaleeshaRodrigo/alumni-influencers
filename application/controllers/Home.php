@@ -16,7 +16,7 @@ class Home extends MY_Controller
 		$data = array(
 			'page_title' => 'Home',
 			'app_name' => 'Alumni Influencers',
-			'status_message' => 'CodeIgniter 3 foundation configured successfully.'
+			'status_message' => 'Alumni Influencers is ready.'
 		);
 
 		$this->render('home/index', $data);

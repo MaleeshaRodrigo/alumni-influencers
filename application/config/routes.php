@@ -59,6 +59,13 @@ $route['ping'] = 'home/ping';
 $route['register'] = 'auth/register';
 $route['auth/register'] = 'auth/register';
 $route['auth/do-register'] = 'auth/do_register';
+$route['auth/login'] = 'auth/login';
+$route['auth/do_login'] = 'auth/do_login';
+$route['auth/logout'] = 'auth/logout';
+$route['auth/forgot_password'] = 'auth/forgot_password';
+$route['auth/send_reset'] = 'auth/send_reset';
+$route['auth/reset_password/(:any)'] = 'auth/reset_password/$1';
+$route['auth/do_reset_password'] = 'auth/do_reset_password';
 $route['auth/verify-notice'] = 'auth/verify_notice';
 $route['auth/verify-email/(:any)'] = 'auth/verify_email/$1';
 
@@ -102,6 +109,13 @@ $route['bids/place'] = 'bids/place';
 $route['bids/store'] = 'bids/store';
 $route['bids/status'] = 'bids/status';
 $route['bids/history'] = 'bids/history';
+$route['bids/run-daily-winner'] = 'bids/run_daily_winner';
+$route['bids/run-daily-winner/(:num)'] = 'bids/run_daily_winner/$1';
+
+$route['admin/api_keys'] = 'admin/api_keys';
+$route['admin/create_api_key'] = 'admin/create_api_key';
+$route['admin/revoke_api_key/(:num)'] = 'admin/revoke_api_key/$1';
+$route['admin/usage_logs'] = 'admin/usage_logs';
 
 $route['api/featured-today'] = 'publicapi/featured_today';
 $route['publicapi/featured-today'] = 'publicapi/featured_today';

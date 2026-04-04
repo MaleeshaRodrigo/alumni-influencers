@@ -13,6 +13,7 @@ class Admin extends MY_Controller
 		$this->load->library('form_validation');
 		$this->load->model('ApiKey_model', 'api_key_model');
 		$this->load->model('UsageLog_model', 'usage_log_model');
+		$this->load->model('User_model', 'user_model');
 	}
 
 	public function api_keys()
@@ -52,6 +53,14 @@ class Admin extends MY_Controller
 		$target_user_id = (int) $this->input->post('user_id', TRUE);
 		if ($target_user_id <= 0) {
 			$target_user_id = (int) $admin['id'];
+		}
+
+		$target_user = $this->user_model->find_by_id($target_user_id);
+		if (!$target_user) {
+			log_message('error', 'API key create blocked: unknown target user_id='.$target_user_id.' admin_id='.(int) $admin['id']);
+			$this->session->set_flashdata('admin_error', 'Target user does not exist.');
+			redirect('admin/api_keys');
+			return;
 		}
 
 		$expires_at_raw = trim((string) $this->input->post('expires_at', TRUE));
