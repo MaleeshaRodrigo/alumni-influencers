@@ -222,7 +222,7 @@ class Auth extends MY_Controller
 
 		log_message('info', 'Login success: user_id='.$user_id.' email='.$user['email']);
 		$this->session->set_flashdata('auth_success', 'Login successful.');
-		redirect('home');
+		redirect('profile/dashboard');
 	}
 
 	public function logout()

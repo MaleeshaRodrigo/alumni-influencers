@@ -18,4 +18,32 @@ class MY_Controller extends CI_Controller
 		$this->load->view($view, $data);
 		$this->load->view('layouts/footer');
 	}
+
+	/**
+	 * Enforces authenticated + verified account.
+	 * Returns the current user row when checks pass.
+	 */
+	protected function require_verified_user()
+	{
+		$user_id = (int) $this->session->userdata('auth_user_id');
+		$is_authenticated = (bool) $this->session->userdata('is_authenticated');
+
+		if (!$is_authenticated || $user_id <= 0) {
+			$this->session->set_flashdata('auth_error', 'Please log in first.');
+			redirect('auth/login');
+			exit;
+		}
+
+		$this->load->model('User_model', 'user_model');
+		$user = $this->user_model->find_by_id($user_id);
+
+		if (!$user || (string) $user['status'] !== 'active' || empty($user['email_verified_at'])) {
+			$this->session->unset_userdata(array('auth_user_id', 'auth_role', 'is_authenticated', 'logged_in_at'));
+			$this->session->set_flashdata('auth_error', 'Please verify your account before accessing profiles.');
+			redirect('auth/login');
+			exit;
+		}
+
+		return $user;
+	}
 }
