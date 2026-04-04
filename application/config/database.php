@@ -75,12 +75,12 @@ $query_builder = TRUE;
 
 $db['default'] = array(
 	'dsn'	=> '',
-	'hostname' => 'localhost',
-	'username' => 'root',
-	'password' => '',
-	'database' => 'alumni_influencers_db',
+	'hostname' => getenv('DB_HOST') ? getenv('DB_HOST') : 'localhost',
+	'username' => getenv('DB_USERNAME') ? getenv('DB_USERNAME') : 'root',
+	'password' => getenv('DB_PASSWORD') !== FALSE ? getenv('DB_PASSWORD') : '',
+	'database' => getenv('DB_DATABASE') ? getenv('DB_DATABASE') : 'alumni_influencers_db',
 	'dbdriver' => 'mysqli',
-	'dbprefix' => '',
+	'dbprefix' => getenv('DB_PREFIX') ? getenv('DB_PREFIX') : '',
 	'pconnect' => FALSE,
 	'db_debug' => (ENVIRONMENT !== 'production'),
 	'cache_on' => FALSE,
@@ -90,7 +90,7 @@ $db['default'] = array(
 	'swap_pre' => '',
 	'encrypt' => FALSE,
 	'compress' => FALSE,
-	'stricton' => FALSE,
+	'stricton' => TRUE,
 	'failover' => array(),
 	'save_queries' => TRUE
 );
