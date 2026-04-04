@@ -185,4 +185,29 @@ class Feature_model extends CI_Model {
 			'is_active' => 1
 		));
 	}
+
+	public function public_featured_today(?DateTime $at = NULL)
+	{
+		if ($at === NULL) {
+			$at = new DateTime();
+		}
+
+		$now = $at->format('Y-m-d H:i:s');
+		return $this->db
+			->select(
+				'fa.cycle_id, fa.featured_from, fa.featured_until, '.
+				'p.id AS profile_id, p.display_name, p.bio, p.photo_path, p.linkedin_url'
+			)
+			->from($this->table.' fa')
+			->join('profiles p', 'p.id = fa.profile_id', 'inner')
+			->where('fa.is_active', 1)
+			->where('p.is_public', 1)
+			->where('fa.featured_from <=', $now)
+			->where('fa.featured_until >=', $now)
+			->order_by('fa.sort_order', 'ASC')
+			->order_by('fa.id', 'ASC')
+			->limit(1)
+			->get()
+			->row_array();
+	}
 }

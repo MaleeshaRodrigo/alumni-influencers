@@ -102,3 +102,6 @@ $route['bids/place'] = 'bids/place';
 $route['bids/store'] = 'bids/store';
 $route['bids/status'] = 'bids/status';
 $route['bids/history'] = 'bids/history';
+
+$route['api/featured-today'] = 'publicapi/featured_today';
+$route['publicapi/featured-today'] = 'publicapi/featured_today';
