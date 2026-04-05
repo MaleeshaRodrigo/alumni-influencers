@@ -19,7 +19,7 @@
 </head>
 <body>
 	<div class="top-note">
-		Swagger UI for coursework OpenAPI spec.
+		Swagger UI OpenAPI spec.
 		Raw spec: <a href="<?php echo site_url('api-docs/openapi.yaml'); ?>"><?php echo site_url('api-docs/openapi.yaml'); ?></a>
 	</div>
 	<div id="swagger-ui"></div>

@@ -3,9 +3,7 @@ info:
   title: Alumni Influencers API
   version: 1.0.0
   description: >
-    Coursework API and web action documentation for the CodeIgniter 3 Alumni Influencers project.
-    Includes public developer endpoint(s), admin API-key management actions, bidding actions,
-    and authentication workflow endpoints.
+    API and web action documentation for the CodeIgniter 3 Alumni Influencers project.
 servers:
   - url: http://localhost/alumni-influencers
     description: Local XAMPP default
