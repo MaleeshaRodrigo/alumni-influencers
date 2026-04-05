@@ -55,17 +55,11 @@ $route['translate_uri_dashes'] = FALSE;
 
 $route['ping'] = 'home/ping';
 
-$route['register'] = 'auth/register';
-$route['auth/register'] = 'auth/register';
 $route['auth/do-register'] = 'auth/do_register';
-$route['auth/login'] = 'auth/login';
 $route['auth/do_login'] = 'auth/do_login';
 $route['auth/logout'] = 'auth/logout';
-$route['auth/forgot_password'] = 'auth/forgot_password';
 $route['auth/send_reset'] = 'auth/send_reset';
-$route['auth/reset_password/(:any)'] = 'auth/reset_password/$1';
 $route['auth/do_reset_password'] = 'auth/do_reset_password';
-$route['auth/verify-notice'] = 'auth/verify_notice';
 $route['auth/verify-email/(:any)'] = 'auth/verify_email/$1';
 
 $route['profile'] = 'profile/dashboard';
