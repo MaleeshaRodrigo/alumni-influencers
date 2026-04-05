@@ -29,7 +29,7 @@ class Auth extends MY_Controller
 	public function do_register()
 	{
 		if (strtoupper($this->input->method()) !== 'POST') {
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -37,7 +37,7 @@ class Auth extends MY_Controller
 		if ($this->is_rate_limited('auth_register', 'auth_register:' . $ip)) {
 			log_message('error', 'Registration rate limit hit for ip=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many registration attempts. Please try again later.');
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -48,7 +48,7 @@ class Auth extends MY_Controller
 		if ($this->form_validation->run() === FALSE) {
 			$this->ratelimiter->hit('auth_register:' . $ip, $this->rate_limit_window('auth_register'));
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -59,7 +59,7 @@ class Auth extends MY_Controller
 		if ($password_hash === FALSE) {
 			log_message('error', 'Registration failed: password hashing error for ' . $email);
 			$this->session->set_flashdata('auth_error', 'Registration failed. Please try again.');
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -74,7 +74,7 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit('auth_register:' . $ip, $this->rate_limit_window('auth_register'));
 			log_message('error', 'Registration failed: insert error for ' . $email);
 			$this->session->set_flashdata('auth_error', 'Unable to create your account right now.');
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -83,7 +83,7 @@ class Auth extends MY_Controller
 		} catch (Exception $e) {
 			log_message('error', 'Registration failed: token generation error for ' . $email . ' - ' . $e->getMessage());
 			$this->session->set_flashdata('auth_error', 'Could not generate verification token. Please try again.');
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -95,7 +95,7 @@ class Auth extends MY_Controller
 		if (!$token_saved) {
 			log_message('error', 'Registration warning: failed to persist verify token for user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Account created, but verification setup failed. Contact support.');
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -111,7 +111,7 @@ class Auth extends MY_Controller
 
 		$this->session->set_flashdata('verify_email', $email);
 		$this->session->set_flashdata('auth_success', 'Registration successful. Please verify your email before logging in.');
-		redirect('auth/verify_notice');
+		return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 	}
 
 	public function verify_email($token = NULL)
@@ -121,7 +121,7 @@ class Auth extends MY_Controller
 		if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
 			log_message('error', 'Email verification failed: malformed token');
 			$this->session->set_flashdata('auth_error', 'Invalid verification link.');
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -131,7 +131,7 @@ class Auth extends MY_Controller
 		if (!$user) {
 			log_message('error', 'Email verification failed: invalid or expired token');
 			$this->session->set_flashdata('auth_error', 'Verification link is invalid or expired.');
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -139,19 +139,19 @@ class Auth extends MY_Controller
 		if (!$verified) {
 			log_message('error', 'Email verification failed: DB update failed for user_id=' . $user['id']);
 			$this->session->set_flashdata('auth_error', 'Could not verify your account right now.');
-			redirect('register');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
 		log_message('info', 'Email verification success: user_id=' . $user['id'] . ' email=' . $user['email']);
 		$this->session->set_flashdata('auth_success', 'Email verified successfully. You can now log in.');
-		redirect('auth/login');
+		return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 	}
 
 	public function do_login()
 	{
 		if (strtoupper($this->input->method()) !== 'POST') {
-			redirect('auth/login');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -159,7 +159,7 @@ class Auth extends MY_Controller
 		if ($this->is_rate_limited('auth_login_ip', 'auth_login_ip:' . $ip)) {
 			log_message('error', 'Login rate limit hit (ip)=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many login attempts. Please try again later.');
-			redirect('auth/login');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -169,7 +169,7 @@ class Auth extends MY_Controller
 		if ($this->form_validation->run() === FALSE) {
 			$this->ratelimiter->hit('auth_login_ip:' . $ip, $this->rate_limit_window('auth_login_ip'));
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			redirect('auth/login');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -178,7 +178,7 @@ class Auth extends MY_Controller
 		if ($this->is_rate_limited('auth_login_identity', $identity_key)) {
 			log_message('error', 'Login rate limit hit (identity hash) ip=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many login attempts for this account. Please try again later.');
-			redirect('auth/login');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -190,7 +190,7 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_login_identity'));
 			log_message('error', 'Login failed: unknown email=' . $email);
 			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
-			redirect('auth/login');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -198,7 +198,7 @@ class Auth extends MY_Controller
 		if (!empty($user['locked_until']) && strtotime((string) $user['locked_until']) > time()) {
 			log_message('error', 'Login blocked: account locked user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Account temporarily locked. Try again later.');
-			redirect('auth/login');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -209,7 +209,7 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_login_identity'));
 			log_message('error', 'Login failed: bad password user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
-			redirect('auth/login');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -218,7 +218,7 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_login_identity'));
 			log_message('error', 'Login blocked: unverified/inactive user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Please verify your email before logging in.');
-			redirect('auth/login');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -230,7 +230,7 @@ class Auth extends MY_Controller
 
 		log_message('info', 'Login success: user_id=' . $user_id . ' email=' . $user['email']);
 		$this->session->set_flashdata('auth_success', 'Login successful.');
-		redirect('profile/dashboard');
+		return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 	}
 
 	public function logout()
@@ -250,13 +250,13 @@ class Auth extends MY_Controller
 		}
 
 		$this->session->set_flashdata('auth_success', 'You have been logged out.');
-		redirect('auth/login');
+		return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 	}
 
 	public function send_reset()
 	{
 		if (strtoupper($this->input->method()) !== 'POST') {
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -264,7 +264,7 @@ class Auth extends MY_Controller
 		if ($this->is_rate_limited('auth_reset_request_ip', 'auth_reset_request_ip:' . $ip)) {
 			log_message('error', 'Password reset rate limit hit (ip)=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many reset requests. Please try again later.');
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -272,7 +272,7 @@ class Auth extends MY_Controller
 		if ($this->form_validation->run() === FALSE) {
 			$this->ratelimiter->hit('auth_reset_request_ip:' . $ip, $this->rate_limit_window('auth_reset_request_ip'));
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -281,7 +281,7 @@ class Auth extends MY_Controller
 		if ($this->is_rate_limited('auth_reset_request_identity', $identity_key)) {
 			log_message('error', 'Password reset rate limit hit (identity hash) ip=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many reset requests for this account. Please try again later.');
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -293,7 +293,7 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 			log_message('error', 'Password reset requested for unknown/deleted account email=' . $email);
 			$this->session->set_flashdata('auth_success', $generic_message);
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -302,7 +302,7 @@ class Auth extends MY_Controller
 		} catch (Exception $e) {
 			log_message('error', 'Password reset token generation failed for user_id=' . $user['id'] . ' - ' . $e->getMessage());
 			$this->session->set_flashdata('auth_error', 'Could not start password reset right now. Please try again.');
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -316,7 +316,7 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 			log_message('error', 'Password reset token save failed for user_id=' . $user['id']);
 			$this->session->set_flashdata('auth_error', 'Could not start password reset right now. Please try again.');
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -330,13 +330,13 @@ class Auth extends MY_Controller
 		$this->ratelimiter->hit('auth_reset_request_ip:' . $ip, $this->rate_limit_window('auth_reset_request_ip'));
 		$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 		$this->session->set_flashdata('auth_success', $generic_message);
-		redirect('auth/forgot_password');
+		return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 	}
 
 	public function do_reset_password()
 	{
 		if (strtoupper($this->input->method()) !== 'POST') {
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -348,14 +348,14 @@ class Auth extends MY_Controller
 
 		if ($this->form_validation->run() === FALSE) {
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			redirect('auth/reset_password/' . $token);
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
 		if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
 			log_message('error', 'Password reset submit failed: malformed token');
 			$this->session->set_flashdata('auth_error', 'Invalid reset token.');
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -364,7 +364,7 @@ class Auth extends MY_Controller
 		if (!$user) {
 			log_message('error', 'Password reset submit failed: expired/invalid token');
 			$this->session->set_flashdata('auth_error', 'Reset token is invalid or expired.');
-			redirect('auth/forgot_password');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -373,7 +373,7 @@ class Auth extends MY_Controller
 		if ($new_hash === FALSE) {
 			log_message('error', 'Password reset failed: hash error user_id=' . $user['id']);
 			$this->session->set_flashdata('auth_error', 'Could not update password right now.');
-			redirect('auth/reset_password/' . $token);
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -381,7 +381,7 @@ class Auth extends MY_Controller
 		if (!$updated) {
 			log_message('error', 'Password reset failed: DB update error user_id=' . $user['id']);
 			$this->session->set_flashdata('auth_error', 'Could not update password right now.');
-			redirect('auth/reset_password/' . $token);
+			return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 			return;
 		}
 
@@ -390,7 +390,7 @@ class Auth extends MY_Controller
 
 		log_message('info', 'Password reset success: user_id=' . $user['id']);
 		$this->session->set_flashdata('auth_success', 'Password updated. You can now log in.');
-		redirect('auth/login');
+		return $this->json_response(array('ok' => FALSE, 'message' => 'UI redirect removed. Use API response body.', 'data' => NULL), 400);
 	}
 
 	public function _email_domain_allowed($email)
@@ -583,4 +583,12 @@ class Auth extends MY_Controller
 
 		return $this->ratelimiter->is_limited($key, $limit, $window);
 	}
+
+    private function json_response(array $payload, $status_code)
+    {
+            return $this->output
+                    ->set_content_type('application/json', 'utf-8')
+                    ->set_status_header((int) $status_code)
+                    ->set_output(json_encode($payload, JSON_UNESCAPED_SLASHES));
+    }
 }

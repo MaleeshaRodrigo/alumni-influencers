@@ -7,5 +7,7 @@ $config['rate_limits'] = array(
 	'auth_login_identity' => array('limit' => 10, 'window_seconds' => 900),
 	'auth_reset_request_ip' => array('limit' => 12, 'window_seconds' => 900),
 	'auth_reset_request_identity' => array('limit' => 6, 'window_seconds' => 900),
-	'public_api_featured_today' => array('limit' => 120, 'window_seconds' => 60)
+	'public_api_featured_today' => array('limit' => 120, 'window_seconds' => 60),
+	'profile_api_read' => array('limit' => 180, 'window_seconds' => 60),
+	'profile_api_write' => array('limit' => 90, 'window_seconds' => 60)
 );

@@ -10,6 +10,7 @@ servers:
 tags:
   - name: Health
   - name: Public API
+  - name: Profile API
   - name: Authentication
   - name: Bidding
   - name: Admin API Keys
@@ -50,6 +51,762 @@ paths:
                 $ref: '#/components/schemas/FeaturedTodayNotFound'
         '429':
           description: Public API rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile:
+    get:
+      tags: [Profile API]
+      summary: Get current authenticated user's profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profile fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSingleResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Token scope or owner account state is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/basic:
+    get:
+      tags: [Profile API]
+      summary: Get basic profile payload for authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Basic profile fetched
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSingleResponse'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Token scope or owner account state is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/save-basic:
+    post:
+      tags: [Profile API]
+      summary: Create or update basic profile for authenticated user
+      description: Accepts multipart form-data to support optional profile image upload.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [display_name]
+              properties:
+                display_name:
+                  type: string
+                bio:
+                  type: string
+                linkedin_url:
+                  type: string
+                  nullable: true
+                is_public:
+                  type: string
+                  enum: ['0', '1', 'true', 'false']
+                profile_image:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Basic profile saved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSingleResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Token scope or owner account state is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '405':
+          description: Method not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/degrees:
+    get:
+      tags: [Profile API]
+      summary: List degree records
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Degree list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionListResponse'
+        '404':
+          description: Basic profile not found for token owner
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Missing or invalid bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Token scope or owner account state is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/degrees/add:
+    post:
+      tags: [Profile API]
+      summary: Create degree record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [institution, qualification]
+              properties:
+                institution: { type: string }
+                qualification: { type: string }
+                field_of_study: { type: string, nullable: true }
+                grade_or_classification: { type: string, nullable: true }
+                started_on: { type: string, format: date, nullable: true }
+                completed_on: { type: string, format: date, nullable: true }
+      responses:
+        '201':
+          description: Degree created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+
+  /api/profile/degrees/update/{id}:
+    post:
+      tags: [Profile API]
+      summary: Update degree record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [institution, qualification]
+              properties:
+                institution: { type: string }
+                qualification: { type: string }
+                field_of_study: { type: string, nullable: true }
+                grade_or_classification: { type: string, nullable: true }
+                started_on: { type: string, format: date, nullable: true }
+                completed_on: { type: string, format: date, nullable: true }
+      responses:
+        '200':
+          description: Degree updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+        '404':
+          description: Degree record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/degrees/delete/{id}:
+    post:
+      tags: [Profile API]
+      summary: Delete degree record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Degree deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileDeleteResponse'
+        '404':
+          description: Degree record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/certifications:
+    get:
+      tags: [Profile API]
+      summary: List certification records
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Certification list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionListResponse'
+
+  /api/profile/certifications/add:
+    post:
+      tags: [Profile API]
+      summary: Create certification record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                issuer: { type: string, nullable: true }
+                credential_id: { type: string, nullable: true }
+                issued_on: { type: string, format: date, nullable: true }
+                expires_on: { type: string, format: date, nullable: true }
+      responses:
+        '201':
+          description: Certification created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+
+  /api/profile/certifications/update/{id}:
+    post:
+      tags: [Profile API]
+      summary: Update certification record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                issuer: { type: string, nullable: true }
+                credential_id: { type: string, nullable: true }
+                issued_on: { type: string, format: date, nullable: true }
+                expires_on: { type: string, format: date, nullable: true }
+      responses:
+        '200':
+          description: Certification updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+        '404':
+          description: Certification record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/certifications/delete/{id}:
+    post:
+      tags: [Profile API]
+      summary: Delete certification record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Certification deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileDeleteResponse'
+        '404':
+          description: Certification record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/licences:
+    get:
+      tags: [Profile API]
+      summary: List licence records
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Licence list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionListResponse'
+
+  /api/profile/licences/add:
+    post:
+      tags: [Profile API]
+      summary: Create licence record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                issuing_body: { type: string, nullable: true }
+                licence_number: { type: string, nullable: true }
+                jurisdiction: { type: string, nullable: true }
+                valid_from: { type: string, format: date, nullable: true }
+                valid_to: { type: string, format: date, nullable: true }
+      responses:
+        '201':
+          description: Licence created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+
+  /api/profile/licences/update/{id}:
+    post:
+      tags: [Profile API]
+      summary: Update licence record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                issuing_body: { type: string, nullable: true }
+                licence_number: { type: string, nullable: true }
+                jurisdiction: { type: string, nullable: true }
+                valid_from: { type: string, format: date, nullable: true }
+                valid_to: { type: string, format: date, nullable: true }
+      responses:
+        '200':
+          description: Licence updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+        '404':
+          description: Licence record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/licences/delete/{id}:
+    post:
+      tags: [Profile API]
+      summary: Delete licence record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Licence deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileDeleteResponse'
+        '404':
+          description: Licence record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/courses:
+    get:
+      tags: [Profile API]
+      summary: List course records
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Course list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionListResponse'
+
+  /api/profile/courses/add:
+    post:
+      tags: [Profile API]
+      summary: Create course record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                provider: { type: string, nullable: true }
+                completed_on: { type: string, format: date, nullable: true }
+                hours: { type: number, nullable: true }
+      responses:
+        '201':
+          description: Course created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+
+  /api/profile/courses/update/{id}:
+    post:
+      tags: [Profile API]
+      summary: Update course record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string }
+                provider: { type: string, nullable: true }
+                completed_on: { type: string, format: date, nullable: true }
+                hours: { type: number, nullable: true }
+      responses:
+        '200':
+          description: Course updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+        '404':
+          description: Course record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/courses/delete/{id}:
+    post:
+      tags: [Profile API]
+      summary: Delete course record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Course deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileDeleteResponse'
+        '404':
+          description: Course record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/employment:
+    get:
+      tags: [Profile API]
+      summary: List employment records
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Employment list returned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionListResponse'
+
+  /api/profile/employment/add:
+    post:
+      tags: [Profile API]
+      summary: Create employment record
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [employer, job_title]
+              properties:
+                employer: { type: string }
+                job_title: { type: string }
+                location: { type: string, nullable: true }
+                started_on: { type: string, format: date, nullable: true }
+                ended_on: { type: string, format: date, nullable: true }
+                is_current: { type: integer, enum: [0, 1] }
+                description: { type: string, nullable: true }
+      responses:
+        '201':
+          description: Employment record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+
+  /api/profile/employment/update/{id}:
+    post:
+      tags: [Profile API]
+      summary: Update employment record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [employer, job_title]
+              properties:
+                employer: { type: string }
+                job_title: { type: string }
+                location: { type: string, nullable: true }
+                started_on: { type: string, format: date, nullable: true }
+                ended_on: { type: string, format: date, nullable: true }
+                is_current: { type: integer, enum: [0, 1] }
+                description: { type: string, nullable: true }
+      responses:
+        '200':
+          description: Employment record updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileSectionItemResponse'
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileValidationError'
+        '404':
+          description: Employment record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+
+  /api/profile/employment/delete/{id}:
+    post:
+      tags: [Profile API]
+      summary: Delete employment record
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Employment record deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProfileDeleteResponse'
+        '404':
+          description: Employment record not found
           content:
             application/json:
               schema:
@@ -336,6 +1093,110 @@ components:
         message:
           type: string
           example: Too many requests. Please try again later.
+        data:
+          nullable: true
+          example: null
+    ProfileSingleResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Profile fetched successfully.
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Profile'
+          nullable: true
+    ProfileSectionListResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Degrees fetched successfully.
+        data:
+          type: object
+          properties:
+            profile_id:
+              type: integer
+              example: 3
+            items:
+              type: array
+              items:
+                type: object
+    ProfileSectionItemResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Degree created.
+        data:
+          type: object
+    ProfileDeleteResponse:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Degree deleted.
+        data:
+          type: object
+          properties:
+            id:
+              type: integer
+              example: 12
+    ProfileValidationError:
+      type: object
+      properties:
+        ok:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Validation failed for section item.
+        errors:
+          type: object
+          additionalProperties:
+            type: string
+        data:
+          nullable: true
+          example: null
+    Profile:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 3
+        user_id:
+          type: integer
+          example: 10
+        display_name:
+          type: string
+          example: Jane Doe
+        bio:
+          type: string
+          nullable: true
+          example: AI engineer and alumni mentor.
+        photo_path:
+          type: string
+          nullable: true
+          example: uploads/profile_images/f00ba7.jpg
+        linkedin_url:
+          type: string
+          nullable: true
+          example: https://www.linkedin.com/in/jane-doe
+        is_public:
+          type: integer
+          example: 1
     FeaturedTodaySuccess:
       type: object
       properties:

@@ -22,7 +22,7 @@ class Bids extends MY_Controller
 
 	public function index()
 	{
-		$this->place();
+		return $this->status();
 	}
 
 	public function place()
@@ -32,36 +32,45 @@ class Bids extends MY_Controller
 		$current_bid = $this->bid_model->get_by_user_and_cycle((int) $user['id'], $cycle_id);
 		$eligibility = $this->bid_model->monthly_eligibility_for_user((int) $user['id']);
 
-		$data = array(
-			'page_title' => 'Place Blind Bid',
-			'cycle_id' => $cycle_id,
-			'current_bid' => $current_bid,
-			'eligibility' => $eligibility
-		);
-
-		$this->render('bids/place_bid', $data);
+		return $this->json_response(array(
+			'ok' => TRUE,
+			'message' => 'Bid placement context fetched successfully.',
+			'data' => array(
+				'cycle_id' => $cycle_id,
+				'current_bid' => $current_bid,
+				'eligibility' => $eligibility
+			)
+		), 200);
 	}
 
 	public function store()
 	{
 		$user = $this->require_verified_user();
 		if (strtoupper($this->input->method()) !== 'POST') {
-			redirect('bids/place');
-			return;
+			return $this->json_response(array(
+				'ok' => FALSE,
+				'message' => 'Method not allowed. Use POST.',
+				'data' => NULL
+			), 405);
 		}
 
 		$this->form_validation->set_rules('bid_amount', 'Bid Amount', 'trim|required|regex_match[/^[0-9]+(?:\\.[0-9]{1,2})?$/]');
 		if ($this->form_validation->run() === FALSE) {
-			$this->session->set_flashdata('bid_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			redirect('bids/place');
-			return;
+			return $this->json_response(array(
+				'ok' => FALSE,
+				'message' => 'Validation failed.',
+				'errors' => $this->form_validation->error_array(),
+				'data' => NULL
+			), 400);
 		}
 
 		$amount = (float) $this->input->post('bid_amount', TRUE);
 		if ($amount <= 0) {
-			$this->session->set_flashdata('bid_error', 'Bid amount must be greater than zero.');
-			redirect('bids/place');
-			return;
+			return $this->json_response(array(
+				'ok' => FALSE,
+				'message' => 'Bid amount must be greater than zero.',
+				'data' => NULL
+			), 400);
 		}
 
 		$cycle_id = $this->bid_model->current_cycle_id();
@@ -79,9 +88,11 @@ class Bids extends MY_Controller
 				);
 			}
 			log_message('error', 'Bid action failed: user_id='.(int) $user['id'].' cycle_id='.$cycle_id.' reason='.$result['error']);
-			$this->session->set_flashdata('bid_error', $result['error']);
-			redirect('bids/place');
-			return;
+			return $this->json_response(array(
+				'ok' => FALSE,
+				'message' => (string) $result['error'],
+				'data' => NULL
+			), 400);
 		}
 
 		log_message(
@@ -89,8 +100,15 @@ class Bids extends MY_Controller
 			'Bid '.$result['action'].' by user_id='.(int) $user['id'].' cycle_id='.$cycle_id.' bid_id='.(int) $result['bid_id']
 		);
 
-		$this->session->set_flashdata('bid_success', 'Your bid has been recorded.');
-		redirect('bids/status');
+		return $this->json_response(array(
+			'ok' => TRUE,
+			'message' => 'Your bid has been recorded.',
+			'data' => array(
+				'action' => (string) $result['action'],
+				'bid_id' => (int) $result['bid_id'],
+				'cycle_id' => $cycle_id
+			)
+		), 200);
 	}
 
 	public function status()
@@ -100,14 +118,15 @@ class Bids extends MY_Controller
 		$status = $this->bid_model->blind_status_for_user_cycle((int) $user['id'], $cycle_id);
 		$eligibility = $this->bid_model->monthly_eligibility_for_user((int) $user['id']);
 
-		$data = array(
-			'page_title' => 'Bid Status',
-			'cycle_id' => $cycle_id,
-			'bid_status' => $status,
-			'eligibility' => $eligibility
-		);
-
-		$this->render('bids/bid_status', $data);
+		return $this->json_response(array(
+			'ok' => TRUE,
+			'message' => 'Bid status fetched successfully.',
+			'data' => array(
+				'cycle_id' => $cycle_id,
+				'bid_status' => $status,
+				'eligibility' => $eligibility
+			)
+		), 200);
 	}
 
 	public function history()
@@ -125,13 +144,14 @@ class Bids extends MY_Controller
 			' bonus='.(int) $eligibility['has_event_bonus']
 		);
 
-		$data = array(
-			'page_title' => 'Bid History',
-			'history' => $history,
-			'eligibility' => $eligibility
-		);
-
-		$this->render('bids/history', $data);
+		return $this->json_response(array(
+			'ok' => TRUE,
+			'message' => 'Bid history fetched successfully.',
+			'data' => array(
+				'history' => $history,
+				'eligibility' => $eligibility
+			)
+		), 200);
 	}
 
 	public function run_daily_winner($cycle_id = NULL)
@@ -189,5 +209,13 @@ class Bids extends MY_Controller
 			'trigger' => 'web_key',
 			'actor_user_id' => 0
 		);
+	}
+
+	private function json_response(array $payload, $status_code)
+	{
+		return $this->output
+			->set_content_type('application/json', 'utf-8')
+			->set_status_header((int) $status_code)
+			->set_output(json_encode($payload, JSON_UNESCAPED_SLASHES));
 	}
 }

@@ -2,22 +2,28 @@
 defined('BASEPATH') OR exit('No direct script access allowed');
 
 /**
- * Alumni profile management:
- * - Step 5: basic profile
- * - Step 6: repeatable section CRUD
+ * Authenticated profile JSON API.
  *
  * @property CI_Input $input
- * @property CI_Session $session
+ * @property CI_Output $output
+ * @property CI_Config $config
  * @property CI_Form_validation $form_validation
+ * @property CI_Upload $upload
+ * @property BearerTokenAuth $bearer_auth
+ * @property RateLimiter $ratelimiter
  * @property Profile_model $profile_model
  * @property Degree_model $degree_model
  * @property Certification_model $certification_model
  * @property Licence_model $licence_model
  * @property Course_model $course_model
  * @property Employment_model $employment_model
+ * @property User_model $user_model
  */
-class Profile extends MY_Controller
+class ProfileApi extends CI_Controller
 {
+	/** @var array<string, string> */
+	private $extra_validation_errors = array();
+
 	public function __construct()
 	{
 		parent::__construct();
@@ -27,61 +33,66 @@ class Profile extends MY_Controller
 		$this->load->model('Licence_model', 'licence_model');
 		$this->load->model('Course_model', 'course_model');
 		$this->load->model('Employment_model', 'employment_model');
-		$this->load->helper(array('form', 'url'));
+		$this->load->model('User_model', 'user_model');
+		$this->load->library('BearerTokenAuth', NULL, 'bearer_auth');
+		$this->load->library('RateLimiter');
 		$this->load->library('form_validation');
+		$this->load->helper(array('url', 'form'));
+		$this->config->load('security_hardening', TRUE);
 	}
 
-	public function dashboard()
+	public function profile()
 	{
-		$user = $this->require_verified_user();
-		$profile = $this->profile_model->get_by_user_id((int) $user['id']);
+		$context = $this->begin_request(array('GET'), FALSE, 'profile_api_read');
+		if (!$context['ok']) {
+			return $context['response'];
+		}
 
-		$data = array(
-			'page_title' => 'Profile Dashboard',
-			'user' => $user,
-			'profile' => $profile
-		);
-
-		$this->render('profile/dashboard', $data);
+		$profile = $this->profile_model->get_by_user_id((int) $context['user']['id']);
+		return $this->respond($context, array(
+			'ok' => TRUE,
+			'message' => 'Profile fetched successfully.',
+			'data' => $profile
+		), 200);
 	}
 
 	public function basic()
 	{
-		$user = $this->require_verified_user();
-		$profile = $this->profile_model->get_by_user_id((int) $user['id']);
+		$context = $this->begin_request(array('GET'), FALSE, 'profile_api_read');
+		if (!$context['ok']) {
+			return $context['response'];
+		}
 
-		$data = array(
-			'page_title' => 'Edit Basic Profile',
-			'profile' => $profile
-		);
-
-		$this->render('profile/edit_basic', $data);
+		$profile = $this->profile_model->get_by_user_id((int) $context['user']['id']);
+		return $this->respond($context, array(
+			'ok' => TRUE,
+			'message' => 'Basic profile fetched successfully.',
+			'data' => $profile
+		), 200);
 	}
 
 	public function save_basic()
 	{
-		$user = $this->require_verified_user();
-		if (strtoupper($this->input->method()) !== 'POST') {
-			redirect('profile/basic');
-			return;
+		$context = $this->begin_request(array('POST'), TRUE, 'profile_api_write');
+		if (!$context['ok']) {
+			return $context['response'];
 		}
 
-		$this->form_validation->set_rules('full_name', 'Full Name', 'trim|required|max_length[150]');
+		$this->normalize_basic_payload();
+		$this->form_validation->set_rules('display_name', 'Display Name', 'trim|required|max_length[150]');
 		$this->form_validation->set_rules('bio', 'Bio', 'trim|max_length[5000]');
 		$this->form_validation->set_rules('linkedin_url', 'LinkedIn URL', 'trim|max_length[512]|callback__valid_linkedin_url');
+		$this->form_validation->set_rules('is_public', 'Public Profile', 'trim|in_list[0,1,true,false]');
 
 		if ($this->form_validation->run() === FALSE) {
-			$this->session->set_flashdata('profile_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			redirect('profile/basic');
-			return;
+			return $this->validation_failed($context, 'Validation failed for basic profile.');
 		}
 
 		$payload = array(
-			'display_name' => trim((string) $this->input->post('full_name', TRUE)),
+			'display_name' => trim((string) $this->input->post('display_name', TRUE)),
 			'bio' => trim((string) $this->input->post('bio', TRUE)),
 			'linkedin_url' => trim((string) $this->input->post('linkedin_url', TRUE))
 		);
-
 		if ($payload['bio'] === '') {
 			$payload['bio'] = NULL;
 		}
@@ -89,165 +100,152 @@ class Profile extends MY_Controller
 			$payload['linkedin_url'] = NULL;
 		}
 
-		$current_profile = $this->profile_model->get_by_user_id((int) $user['id']);
+		$is_public_raw = strtolower(trim((string) $this->input->post('is_public', TRUE)));
+		if ($is_public_raw !== '') {
+			$payload['is_public'] = in_array($is_public_raw, array('1', 'true'), TRUE) ? 1 : 0;
+		}
+
+		$current_profile = $this->profile_model->get_by_user_id((int) $context['user']['id']);
 		$old_photo_path = $current_profile && !empty($current_profile['photo_path']) ? (string) $current_profile['photo_path'] : NULL;
 		$new_photo_path = NULL;
 
 		if (isset($_FILES['profile_image']) && !empty($_FILES['profile_image']['name'])) {
 			$upload_result = $this->upload_profile_photo('profile_image');
 			if (!$upload_result['ok']) {
-				$this->session->set_flashdata('profile_error', $upload_result['error']);
-				redirect('profile/basic');
-				return;
+				return $this->respond($context, array(
+					'ok' => FALSE,
+					'message' => 'Profile image upload failed.',
+					'errors' => array('profile_image' => (string) $upload_result['error'])
+				), 400);
 			}
 
 			$new_photo_path = $upload_result['relative_path'];
 			$payload['photo_path'] = $new_photo_path;
 		}
 
-		$profile_id = $this->profile_model->save_basic_by_user_id((int) $user['id'], $payload);
+		$profile_id = $this->profile_model->save_basic_by_user_id((int) $context['user']['id'], $payload);
 		if (!$profile_id) {
 			if ($new_photo_path !== NULL) {
 				$this->safe_delete_profile_photo($new_photo_path);
 			}
-			log_message('error', 'Profile basic save failed for user_id='.(int) $user['id']);
-			$this->session->set_flashdata('profile_error', 'Could not save your profile right now.');
-			redirect('profile/basic');
-			return;
+			log_message('error', 'Profile API basic save failed user_id='.(int) $context['user']['id']);
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Could not save profile right now.',
+				'data' => NULL
+			), 500);
 		}
 
 		if ($new_photo_path !== NULL && $old_photo_path !== NULL && $old_photo_path !== $new_photo_path) {
 			$this->safe_delete_profile_photo($old_photo_path);
 		}
 
-		log_message('info', 'Profile basic saved: user_id='.(int) $user['id'].' profile_id='.(int) $profile_id);
-		$this->session->set_flashdata('profile_success', 'Basic profile saved successfully.');
-		redirect('profile/dashboard');
+		$profile = $this->profile_model->get_by_id((int) $profile_id);
+		return $this->respond($context, array(
+			'ok' => TRUE,
+			'message' => 'Basic profile saved successfully.',
+			'data' => $profile
+		), 200);
 	}
 
 	public function degrees()
 	{
-		$this->render_section_page('degrees');
+		return $this->list_section('degrees');
 	}
 
 	public function add_degree()
 	{
-		$this->save_section_item('degrees');
-	}
-
-	public function edit_degree($id)
-	{
-		$this->render_section_page('degrees', (int) $id);
+		return $this->create_section('degrees');
 	}
 
 	public function update_degree($id)
 	{
-		$this->update_section_item('degrees', (int) $id);
+		return $this->update_section('degrees', (int) $id);
 	}
 
 	public function delete_degree($id)
 	{
-		$this->delete_section_item('degrees', (int) $id);
+		return $this->delete_section('degrees', (int) $id);
 	}
 
 	public function certifications()
 	{
-		$this->render_section_page('certifications');
+		return $this->list_section('certifications');
 	}
 
 	public function add_certification()
 	{
-		$this->save_section_item('certifications');
-	}
-
-	public function edit_certification($id)
-	{
-		$this->render_section_page('certifications', (int) $id);
+		return $this->create_section('certifications');
 	}
 
 	public function update_certification($id)
 	{
-		$this->update_section_item('certifications', (int) $id);
+		return $this->update_section('certifications', (int) $id);
 	}
 
 	public function delete_certification($id)
 	{
-		$this->delete_section_item('certifications', (int) $id);
+		return $this->delete_section('certifications', (int) $id);
 	}
 
 	public function licences()
 	{
-		$this->render_section_page('licences');
+		return $this->list_section('licences');
 	}
 
 	public function add_licence()
 	{
-		$this->save_section_item('licences');
-	}
-
-	public function edit_licence($id)
-	{
-		$this->render_section_page('licences', (int) $id);
+		return $this->create_section('licences');
 	}
 
 	public function update_licence($id)
 	{
-		$this->update_section_item('licences', (int) $id);
+		return $this->update_section('licences', (int) $id);
 	}
 
 	public function delete_licence($id)
 	{
-		$this->delete_section_item('licences', (int) $id);
+		return $this->delete_section('licences', (int) $id);
 	}
 
 	public function courses()
 	{
-		$this->render_section_page('courses');
+		return $this->list_section('courses');
 	}
 
 	public function add_course()
 	{
-		$this->save_section_item('courses');
-	}
-
-	public function edit_course($id)
-	{
-		$this->render_section_page('courses', (int) $id);
+		return $this->create_section('courses');
 	}
 
 	public function update_course($id)
 	{
-		$this->update_section_item('courses', (int) $id);
+		return $this->update_section('courses', (int) $id);
 	}
 
 	public function delete_course($id)
 	{
-		$this->delete_section_item('courses', (int) $id);
+		return $this->delete_section('courses', (int) $id);
 	}
 
 	public function employment()
 	{
-		$this->render_section_page('employment');
+		return $this->list_section('employment');
 	}
 
 	public function add_employment()
 	{
-		$this->save_section_item('employment');
-	}
-
-	public function edit_employment($id)
-	{
-		$this->render_section_page('employment', (int) $id);
+		return $this->create_section('employment');
 	}
 
 	public function update_employment($id)
 	{
-		$this->update_section_item('employment', (int) $id);
+		return $this->update_section('employment', (int) $id);
 	}
 
 	public function delete_employment($id)
 	{
-		$this->delete_section_item('employment', (int) $id);
+		return $this->delete_section('employment', (int) $id);
 	}
 
 	public function _valid_linkedin_url($url)
@@ -309,139 +307,316 @@ class Profile extends MY_Controller
 		return FALSE;
 	}
 
-	private function render_section_page($section, $edit_id = NULL)
+	private function list_section($section)
 	{
-		$profile = $this->require_profile_for_sections();
-		$config = $this->section_config($section);
-		$model = $this->{$config['model']};
-
-		$items = $model->list_by_profile_id((int) $profile['id']);
-		$edit_item = NULL;
-
-		if ($edit_id !== NULL) {
-			$edit_item = $model->get_by_id_and_profile((int) $edit_id, (int) $profile['id']);
-			if (!$edit_item) {
-				$this->session->set_flashdata('section_error', 'Record not found or access denied.');
-				redirect($config['list_route']);
-				return;
-			}
+		$context = $this->begin_request(array('GET'), FALSE, 'profile_api_read');
+		if (!$context['ok']) {
+			return $context['response'];
 		}
 
-		$data = array(
-			'page_title' => $config['title'],
-			'items' => $items,
-			'edit_item' => $edit_item,
-			'config' => $config
-		);
+		$profile = $this->profile_for_sections($context);
+		if (!$profile) {
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Complete basic profile first before managing sections.',
+				'data' => NULL
+			), 404);
+		}
 
-		$this->render($config['view'], $data);
+		$config = $this->section_config($section);
+		$items = $this->{$config['model']}->list_by_profile_id((int) $profile['id']);
+
+		return $this->respond($context, array(
+			'ok' => TRUE,
+			'message' => ucfirst($section).' fetched successfully.',
+			'data' => array(
+				'profile_id' => (int) $profile['id'],
+				'items' => $items
+			)
+		), 200);
 	}
 
-	private function save_section_item($section)
+	private function create_section($section)
 	{
-		$profile = $this->require_profile_for_sections();
-		$config = $this->section_config($section);
+		$context = $this->begin_request(array('POST'), TRUE, 'profile_api_write');
+		if (!$context['ok']) {
+			return $context['response'];
+		}
 
-		if (strtoupper($this->input->method()) !== 'POST') {
-			redirect($config['list_route']);
-			return;
+		$profile = $this->profile_for_sections($context);
+		if (!$profile) {
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Complete basic profile first before managing sections.',
+				'data' => NULL
+			), 404);
 		}
 
 		$this->apply_section_validation($section);
 		if (!$this->form_validation->run() || !$this->validate_section_date_ranges($section)) {
-			$this->session->set_flashdata('section_error', validation_errors('<p style="margin:4px 0;">', '</p>') ?: 'Please fix the highlighted errors.');
-			redirect($config['list_route']);
-			return;
+			return $this->validation_failed($context, 'Validation failed for section item.');
 		}
 
+		$config = $this->section_config($section);
 		$payload = $this->section_payload($section, (int) $profile['id']);
 		$id = $this->{$config['model']}->create($payload);
-
 		if (!$id) {
-			log_message('error', 'Section create failed: '.$section.' profile_id='.$profile['id']);
-			$this->session->set_flashdata('section_error', 'Could not save record right now.');
-			redirect($config['list_route']);
-			return;
+			log_message('error', 'Profile API section create failed section='.$section.' profile_id='.(int) $profile['id']);
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Could not create section item right now.',
+				'data' => NULL
+			), 500);
 		}
 
-		log_message('info', 'Section create success: '.$section.' profile_id='.$profile['id'].' id='.$id);
-		$this->session->set_flashdata('section_success', $config['entity_label'].' added.');
-		redirect($config['list_route']);
+		$created = $this->{$config['model']}->get_by_id_and_profile((int) $id, (int) $profile['id']);
+		return $this->respond($context, array(
+			'ok' => TRUE,
+			'message' => $config['entity_label'].' created.',
+			'data' => $created
+		), 201);
 	}
 
-	private function update_section_item($section, $id)
+	private function update_section($section, $id)
 	{
-		$profile = $this->require_profile_for_sections();
-		$config = $this->section_config($section);
-		$model = $this->{$config['model']};
-
-		if (strtoupper($this->input->method()) !== 'POST') {
-			redirect($config['list_route']);
-			return;
+		$context = $this->begin_request(array('POST'), TRUE, 'profile_api_write');
+		if (!$context['ok']) {
+			return $context['response'];
 		}
 
+		$profile = $this->profile_for_sections($context);
+		if (!$profile) {
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Complete basic profile first before managing sections.',
+				'data' => NULL
+			), 404);
+		}
+
+		$config = $this->section_config($section);
+		$model = $this->{$config['model']};
 		$existing = $model->get_by_id_and_profile((int) $id, (int) $profile['id']);
 		if (!$existing) {
-			$this->session->set_flashdata('section_error', 'Record not found or access denied.');
-			redirect($config['list_route']);
-			return;
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Record not found.',
+				'data' => NULL
+			), 404);
 		}
 
 		$this->apply_section_validation($section);
 		if (!$this->form_validation->run() || !$this->validate_section_date_ranges($section)) {
-			$this->session->set_flashdata('section_error', validation_errors('<p style="margin:4px 0;">', '</p>') ?: 'Please fix the highlighted errors.');
-			redirect($config['edit_route_prefix'].'/'.(int) $id);
-			return;
+			return $this->validation_failed($context, 'Validation failed for section item.');
 		}
 
 		$payload = $this->section_payload($section, (int) $profile['id'], FALSE);
 		$ok = $model->update((int) $id, $payload);
-
 		if (!$ok) {
-			log_message('error', 'Section update failed: '.$section.' profile_id='.$profile['id'].' id='.(int) $id);
-			$this->session->set_flashdata('section_error', 'Could not update record right now.');
-			redirect($config['edit_route_prefix'].'/'.(int) $id);
-			return;
+			log_message('error', 'Profile API section update failed section='.$section.' id='.(int) $id);
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Could not update section item right now.',
+				'data' => NULL
+			), 500);
 		}
 
-		log_message('info', 'Section update success: '.$section.' profile_id='.$profile['id'].' id='.(int) $id);
-		$this->session->set_flashdata('section_success', $config['entity_label'].' updated.');
-		redirect($config['list_route']);
+		$updated = $model->get_by_id_and_profile((int) $id, (int) $profile['id']);
+		return $this->respond($context, array(
+			'ok' => TRUE,
+			'message' => $config['entity_label'].' updated.',
+			'data' => $updated
+		), 200);
 	}
 
-	private function delete_section_item($section, $id)
+	private function delete_section($section, $id)
 	{
-		$profile = $this->require_profile_for_sections();
-		$config = $this->section_config($section);
-		$model = $this->{$config['model']};
-
-		if (strtoupper($this->input->method()) !== 'POST') {
-			redirect($config['list_route']);
-			return;
+		$context = $this->begin_request(array('POST'), TRUE, 'profile_api_write');
+		if (!$context['ok']) {
+			return $context['response'];
 		}
 
+		$profile = $this->profile_for_sections($context);
+		if (!$profile) {
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Complete basic profile first before managing sections.',
+				'data' => NULL
+			), 404);
+		}
+
+		$config = $this->section_config($section);
+		$model = $this->{$config['model']};
 		$existing = $model->get_by_id_and_profile((int) $id, (int) $profile['id']);
 		if (!$existing) {
-			$this->session->set_flashdata('section_error', 'Record not found or access denied.');
-			redirect($config['list_route']);
-			return;
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Record not found.',
+				'data' => NULL
+			), 404);
 		}
 
 		$ok = $model->delete((int) $id);
 		if (!$ok) {
-			log_message('error', 'Section delete failed: '.$section.' profile_id='.$profile['id'].' id='.(int) $id);
-			$this->session->set_flashdata('section_error', 'Could not delete record right now.');
-			redirect($config['list_route']);
-			return;
+			log_message('error', 'Profile API section delete failed section='.$section.' id='.(int) $id);
+			return $this->respond($context, array(
+				'ok' => FALSE,
+				'message' => 'Could not delete section item right now.',
+				'data' => NULL
+			), 500);
 		}
 
-		log_message('info', 'Section delete success: '.$section.' profile_id='.$profile['id'].' id='.(int) $id);
-		$this->session->set_flashdata('section_success', $config['entity_label'].' deleted.');
-		redirect($config['list_route']);
+		return $this->respond($context, array(
+			'ok' => TRUE,
+			'message' => $config['entity_label'].' deleted.',
+			'data' => array('id' => (int) $id)
+		), 200);
+	}
+
+	private function begin_request(array $allowed_methods, $write_scope_required, $rate_limit_name)
+	{
+		$started_at = microtime(TRUE);
+		$method = strtoupper((string) $this->input->method(TRUE));
+		$ip = (string) $this->input->ip_address();
+		$rate_window = $this->rate_limit_window($rate_limit_name);
+		$rate_key = $rate_limit_name.':'.$ip;
+
+		$base_context = array(
+			'ok' => FALSE,
+			'started_at' => $started_at,
+			'rate_key' => $rate_key,
+			'rate_window' => $rate_window,
+			'api_key_id' => NULL,
+			'user' => NULL
+		);
+
+		if ($this->is_rate_limited($rate_limit_name, $rate_key)) {
+			return array(
+				'ok' => FALSE,
+				'response' => $this->json_response(array(
+					'ok' => FALSE,
+					'message' => 'Too many requests. Please try again later.',
+					'data' => NULL
+				), 429)
+			);
+		}
+
+		if (!in_array($method, $allowed_methods, TRUE)) {
+			$payload = array(
+				'ok' => FALSE,
+				'message' => 'Method not allowed. Use '.implode(', ', $allowed_methods).'.',
+				'data' => NULL
+			);
+			return array(
+				'ok' => FALSE,
+				'response' => $this->respond($base_context, $payload, 405)
+			);
+		}
+
+		$auth = $this->bearer_auth->validate_request(array());
+		if (!$auth['ok']) {
+			$payload = array(
+				'ok' => FALSE,
+				'message' => (string) $auth['error'],
+				'data' => NULL
+			);
+			return array(
+				'ok' => FALSE,
+				'response' => $this->respond($base_context, $payload, (int) $auth['code'])
+			);
+		}
+
+		$api_key = $auth['api_key'];
+		$base_context['api_key_id'] = (int) $api_key['id'];
+
+		$required_any = $write_scope_required
+			? array('profile.write', 'profile.manage')
+			: array('profile.read', 'profile.write', 'profile.manage');
+		if (!$this->api_key_has_any_scope($api_key, $required_any)) {
+			return array(
+				'ok' => FALSE,
+				'response' => $this->respond($base_context, array(
+					'ok' => FALSE,
+					'message' => 'Bearer token does not have required scope.',
+					'data' => NULL
+				), 403)
+			);
+		}
+
+		$user = $this->user_model->find_by_id((int) $api_key['user_id']);
+		if (!$user || (string) $user['status'] !== 'active' || empty($user['email_verified_at'])) {
+			return array(
+				'ok' => FALSE,
+				'response' => $this->respond($base_context, array(
+					'ok' => FALSE,
+					'message' => 'API key owner account is not active and verified.',
+					'data' => NULL
+				), 403)
+			);
+		}
+
+		$base_context['ok'] = TRUE;
+		$base_context['user'] = $user;
+		return $base_context;
+	}
+
+	private function respond(array $context, array $payload, $status_code)
+	{
+		if (isset($context['api_key_id'])) {
+			$this->bearer_auth->log_usage($context['api_key_id'], (int) $status_code, $context['started_at']);
+		}
+
+		if (isset($context['rate_key']) && isset($context['rate_window'])) {
+			$this->ratelimiter->hit((string) $context['rate_key'], (int) $context['rate_window']);
+		}
+
+		return $this->json_response($payload, (int) $status_code);
+	}
+
+	private function validation_failed(array $context, $message)
+	{
+		return $this->respond($context, array(
+			'ok' => FALSE,
+			'message' => (string) $message,
+			'errors' => $this->validation_errors_payload(),
+			'data' => NULL
+		), 400);
+	}
+
+	private function validation_errors_payload()
+	{
+		$errors = $this->form_validation->error_array();
+		if (!is_array($errors)) {
+			$errors = array();
+		}
+
+		if (!empty($this->extra_validation_errors)) {
+			$errors = array_merge($errors, $this->extra_validation_errors);
+		}
+
+		$this->extra_validation_errors = array();
+		return $errors;
+	}
+
+	private function normalize_basic_payload()
+	{
+		$display_name = trim((string) $this->input->post('display_name', TRUE));
+		if ($display_name === '') {
+			$fallback = trim((string) $this->input->post('full_name', TRUE));
+			if ($fallback !== '') {
+				$_POST['display_name'] = $fallback;
+			}
+		}
+	}
+
+	private function profile_for_sections(array $context)
+	{
+		return $this->profile_model->get_by_user_id((int) $context['user']['id']);
 	}
 
 	private function apply_section_validation($section)
 	{
+		$this->extra_validation_errors = array();
+
 		if ($section === 'degrees') {
 			$this->form_validation->set_rules('institution', 'Institution', 'trim|required|max_length[255]');
 			$this->form_validation->set_rules('qualification', 'Qualification', 'trim|required|max_length[255]');
@@ -516,20 +691,14 @@ class Profile extends MY_Controller
 			return TRUE;
 		}
 
-		return $this->date_not_before($start, $end);
-	}
-
-	private function date_not_before($from, $to)
-	{
-		$from_dt = DateTime::createFromFormat('Y-m-d', $from);
-		$to_dt = DateTime::createFromFormat('Y-m-d', $to);
-
+		$from_dt = DateTime::createFromFormat('Y-m-d', $start);
+		$to_dt = DateTime::createFromFormat('Y-m-d', $end);
 		if (!$from_dt || !$to_dt) {
 			return TRUE;
 		}
 
 		if ($to_dt < $from_dt) {
-			$this->form_validation->set_message('_valid_optional_date', 'End/expiry date cannot be before start/issued date.');
+			$this->extra_validation_errors['date_range'] = 'End/expiry date cannot be before start/issued date.';
 			return FALSE;
 		}
 
@@ -600,62 +769,45 @@ class Profile extends MY_Controller
 	{
 		$config = array(
 			'degrees' => array(
-				'title' => 'Degrees',
-				'view' => 'profile/degrees',
 				'model' => 'degree_model',
-				'entity_label' => 'Degree',
-				'list_route' => 'profile/degrees',
-				'edit_route_prefix' => 'profile/degrees/edit'
+				'entity_label' => 'Degree'
 			),
 			'certifications' => array(
-				'title' => 'Certifications',
-				'view' => 'profile/certifications',
 				'model' => 'certification_model',
-				'entity_label' => 'Certification',
-				'list_route' => 'profile/certifications',
-				'edit_route_prefix' => 'profile/certifications/edit'
+				'entity_label' => 'Certification'
 			),
 			'licences' => array(
-				'title' => 'Licences',
-				'view' => 'profile/licences',
 				'model' => 'licence_model',
-				'entity_label' => 'Licence',
-				'list_route' => 'profile/licences',
-				'edit_route_prefix' => 'profile/licences/edit'
+				'entity_label' => 'Licence'
 			),
 			'courses' => array(
-				'title' => 'Short Courses',
-				'view' => 'profile/courses',
 				'model' => 'course_model',
-				'entity_label' => 'Course',
-				'list_route' => 'profile/courses',
-				'edit_route_prefix' => 'profile/courses/edit'
+				'entity_label' => 'Course'
 			),
 			'employment' => array(
-				'title' => 'Employment History',
-				'view' => 'profile/employment',
 				'model' => 'employment_model',
-				'entity_label' => 'Employment record',
-				'list_route' => 'profile/employment',
-				'edit_route_prefix' => 'profile/employment/edit'
+				'entity_label' => 'Employment record'
 			)
 		);
 
 		return $config[$section];
 	}
 
-	private function require_profile_for_sections()
+	private function api_key_has_any_scope(array $api_key, array $required_scopes)
 	{
-		$user = $this->require_verified_user();
-		$profile = $this->profile_model->get_by_user_id((int) $user['id']);
-
-		if (!$profile) {
-			$this->session->set_flashdata('profile_error', 'Please complete your basic profile first.');
-			redirect('profile/basic');
-			exit;
+		$scope_string = isset($api_key['scopes']) ? (string) $api_key['scopes'] : '';
+		$actual_scopes = array_filter(array_map('trim', explode(',', $scope_string)));
+		if (empty($required_scopes)) {
+			return TRUE;
 		}
 
-		return $profile;
+		foreach ($required_scopes as $required_scope) {
+			if (in_array((string) $required_scope, $actual_scopes, TRUE)) {
+				return TRUE;
+			}
+		}
+
+		return FALSE;
 	}
 
 	private function null_if_blank($value)
@@ -668,7 +820,7 @@ class Profile extends MY_Controller
 	{
 		$upload_dir = $this->profile_upload_directory();
 		if (!is_dir($upload_dir) && !mkdir($upload_dir, 0755, TRUE)) {
-			log_message('error', 'Profile image upload failed: could not create upload directory');
+			log_message('error', 'Profile API image upload failed: directory create failed');
 			return array('ok' => FALSE, 'error' => 'Upload folder is not writable.');
 		}
 
@@ -687,15 +839,16 @@ class Profile extends MY_Controller
 
 		if (!$this->upload->do_upload($field_name)) {
 			$error = strip_tags((string) $this->upload->display_errors('', ''));
-			log_message('error', 'Profile image upload failed: '.$error);
-			return array('ok' => FALSE, 'error' => $error !== '' ? $error : 'Image upload failed.');
+			return array(
+				'ok' => FALSE,
+				'error' => $error !== '' ? $error : 'Image upload failed.'
+			);
 		}
 
 		$data = $this->upload->data();
-		$relative_path = 'uploads/profile_images/'.$data['file_name'];
 		return array(
 			'ok' => TRUE,
-			'relative_path' => $relative_path
+			'relative_path' => 'uploads/profile_images/'.$data['file_name']
 		);
 	}
 
@@ -709,7 +862,6 @@ class Profile extends MY_Controller
 		$absolute = FCPATH.$relative_path;
 		$base_dir = realpath($this->profile_upload_directory());
 		$file_real = realpath($absolute);
-
 		if ($base_dir === FALSE || $file_real === FALSE) {
 			return;
 		}
@@ -728,5 +880,39 @@ class Profile extends MY_Controller
 	private function profile_upload_directory()
 	{
 		return rtrim(FCPATH, '/\\').DIRECTORY_SEPARATOR.'uploads'.DIRECTORY_SEPARATOR.'profile_images'.DIRECTORY_SEPARATOR;
+	}
+
+	private function json_response(array $payload, $status_code)
+	{
+		return $this->output
+			->set_content_type('application/json', 'utf-8')
+			->set_status_header((int) $status_code)
+			->set_output(json_encode($payload, JSON_UNESCAPED_SLASHES));
+	}
+
+	private function rate_limit_window($name)
+	{
+		$limits = $this->config->item('rate_limits', 'security_hardening');
+		if (!is_array($limits) || !isset($limits[$name]['window_seconds'])) {
+			return 60;
+		}
+
+		return max(1, (int) $limits[$name]['window_seconds']);
+	}
+
+	private function is_rate_limited($name, $key)
+	{
+		$limits = $this->config->item('rate_limits', 'security_hardening');
+		if (!is_array($limits) || !isset($limits[$name])) {
+			return FALSE;
+		}
+
+		$limit = isset($limits[$name]['limit']) ? (int) $limits[$name]['limit'] : 0;
+		$window = isset($limits[$name]['window_seconds']) ? (int) $limits[$name]['window_seconds'] : 60;
+		if ($limit <= 0) {
+			return FALSE;
+		}
+
+		return $this->ratelimiter->is_limited($key, $limit, $window);
 	}
 }

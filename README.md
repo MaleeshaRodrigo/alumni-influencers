@@ -2,7 +2,7 @@
 
 PHP + CodeIgniter 3 + MySQL coursework application covering:
 - university-email authentication and account verification,
-- profile management and secure media upload,
+- API-based profile management and secure media upload,
 - blind bidding + automated featured alumnus selection,
 - API key lifecycle + usage logging,
 - public developer API + Swagger/OpenAPI docs.
@@ -30,16 +30,28 @@ PHP + CodeIgniter 3 + MySQL coursework application covering:
 
 ## Main URLs
 
-- App home: `/`
-- Auth:
-  - `/register`
-  - `/auth/login`
-- Profile dashboard: `/profile/dashboard`
-- Blind bidding:
-  - `/bids/place`
-  - `/bids/status`
+- Health:
+  - `/ping`
 - Public API:
   - `/api/featured-today`
+- Profile API:
+  - `/api/profile`
+  - `/api/profile/basic`
+  - `/api/profile/save-basic`
+  - `/api/profile/degrees`
+  - `/api/profile/certifications`
+  - `/api/profile/licences`
+  - `/api/profile/courses`
+  - `/api/profile/employment`
+- Bidding API:
+  - `/bids/store`
+  - `/bids/status`
+  - `/bids/history`
+- Admin API:
+  - `/admin/api_keys`
+  - `/admin/create_api_key`
+  - `/admin/revoke_api_key/{id}`
+  - `/admin/usage_logs`
 - Swagger UI:
   - `/api-docs`
 - OpenAPI spec:
@@ -66,5 +78,5 @@ PHP + CodeIgniter 3 + MySQL coursework application covering:
 - This project intentionally keeps CI3 MVC layering clear:
   - controllers orchestrate flow,
   - models hold data/business rules,
-  - views remain presentation-focused.
+  - Swagger UI is the only retained server-rendered view for API docs.
 - Logs are written through CodeIgniter `log_message()` for critical security and business events.

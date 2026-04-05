@@ -11,17 +11,6 @@ class Home extends MY_Controller
 		parent::__construct();
 	}
 
-	public function index()
-	{
-		$data = array(
-			'page_title' => 'Home',
-			'app_name' => 'Alumni Influencers',
-			'status_message' => 'Alumni Influencers is ready.'
-		);
-
-		$this->render('home/index', $data);
-	}
-
 	public function ping()
 	{
 		$this->output
