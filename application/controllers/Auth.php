@@ -26,12 +26,6 @@ class Auth extends MY_Controller
 		$this->config->load('security_hardening', TRUE);
 	}
 
-	public function register()
-	{
-		show_404();
-		return;
-	}
-
 	public function do_register()
 	{
 		if (strtoupper($this->input->method()) !== 'POST') {
@@ -120,12 +114,6 @@ class Auth extends MY_Controller
 		redirect('auth/verify_notice');
 	}
 
-	public function verify_notice()
-	{
-		show_404();
-		return;
-	}
-
 	public function verify_email($token = NULL)
 	{
 		$token = is_string($token) ? trim($token) : '';
@@ -158,12 +146,6 @@ class Auth extends MY_Controller
 		log_message('info', 'Email verification success: user_id=' . $user['id'] . ' email=' . $user['email']);
 		$this->session->set_flashdata('auth_success', 'Email verified successfully. You can now log in.');
 		redirect('auth/login');
-	}
-
-	public function login()
-	{
-		show_404();
-		return;
 	}
 
 	public function do_login()
@@ -271,12 +253,6 @@ class Auth extends MY_Controller
 		redirect('auth/login');
 	}
 
-	public function forgot_password()
-	{
-		show_404();
-		return;
-	}
-
 	public function send_reset()
 	{
 		if (strtoupper($this->input->method()) !== 'POST') {
@@ -355,12 +331,6 @@ class Auth extends MY_Controller
 		$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 		$this->session->set_flashdata('auth_success', $generic_message);
 		redirect('auth/forgot_password');
-	}
-
-	public function reset_password($token = NULL)
-	{
-		show_404();
-		return;
 	}
 
 	public function do_reset_password()
