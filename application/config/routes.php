@@ -107,3 +107,18 @@ $route['api/profile/employment/delete/(:num)'] = 'profileapi/delete_employment/$
 
 $route['api-docs'] = 'apidocs/index';
 $route['api-docs/openapi.yaml'] = 'apidocs/openapi';
+
+// Dashboard Routes
+$route['dashboard'] = 'dashboard/index';
+$route['dashboard/graphs'] = 'dashboard/graphs';
+$route['dashboard/alumni'] = 'dashboard/alumni';
+$route['dashboard/login'] = 'dashboard/login';
+$route['dashboard/register'] = 'dashboard/register';
+
+// Analytics API Routes
+$route['api/analytics/alumni_distribution'] = 'analyticsapi/alumni_distribution';
+$route['api/analytics/skills_gap'] = 'analyticsapi/skills_gap';
+$route['api/analytics/career_pathways'] = 'analyticsapi/career_pathways';
+$route['api/analytics/trends'] = 'analyticsapi/trends';
+$route['api/analytics/alumni_list'] = 'analyticsapi/alumni_list';
+$route['api/analytics/usage_stats'] = 'analyticsapi/usage_stats';
