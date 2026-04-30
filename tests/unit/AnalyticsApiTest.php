@@ -2,7 +2,7 @@
 
 class AnalyticsApiTest extends TestCase
 {
-	private function newController()
+	private function makeController()
 	{
 		$controller = $this->newController('AnalyticsApi');
 		$controller->analytics_model = new FakeService();
@@ -20,7 +20,7 @@ class AnalyticsApiTest extends TestCase
 
 	public function testAlumniDistributionReturnsAllSlices()
 	{
-		$controller = $this->newController();
+		$controller = $this->makeController();
 		$controller->input->methodValue = 'GET';
 		$controller->analytics_model->setReturn('get_alumni_distribution_by_degree', array(array('programme' => 'CS')));
 		$controller->analytics_model->setReturn('get_alumni_distribution_by_graduation_year', array(array('year' => 2024)));
@@ -37,7 +37,7 @@ class AnalyticsApiTest extends TestCase
 
 	public function testUsageStatsReturnsRecentLogsAndKeys()
 	{
-		$controller = $this->newController();
+		$controller = $this->makeController();
 		$controller->input->methodValue = 'GET';
 		$controller->usage_log_model = new FakeService();
 		$controller->api_key_model = new FakeService();

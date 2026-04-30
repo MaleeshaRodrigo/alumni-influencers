@@ -2,7 +2,7 @@
 
 class PublicapiTest extends TestCase
 {
-	private function newController()
+	private function makeController()
 	{
 		$controller = $this->newController('Publicapi');
 		$controller->feature_model = new FakeService();
@@ -20,7 +20,7 @@ class PublicapiTest extends TestCase
 
 	public function testFeaturedTodayReturnsFeaturedAlumnus()
 	{
-		$controller = $this->newController();
+		$controller = $this->makeController();
 		$controller->input->methodValue = 'GET';
 		$controller->uri->uriString = 'api/featured-today';
 		$controller->feature_model->setReturn('public_featured_today', array(
@@ -44,7 +44,7 @@ class PublicapiTest extends TestCase
 
 	public function testFeaturedTodayReturns404WhenNoFeaturedRowExists()
 	{
-		$controller = $this->newController();
+		$controller = $this->makeController();
 		$controller->input->methodValue = 'GET';
 		$controller->uri->uriString = 'api/featured-today';
 		$controller->feature_model->setReturn('public_featured_today', FALSE);
