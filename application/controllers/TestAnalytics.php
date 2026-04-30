@@ -9,11 +9,11 @@ class TestAnalytics extends CI_Controller {
 		$this->load->model('User_model', 'user_model');
 
 		// 1. Ensure a user exists
-		$user = $this->user_model->find_by_email('admin@westminster.ac.uk');
+		$user = $this->user_model->find_by_email('admin@eastminster.ac.uk');
 		if (!$user) {
 			echo "Creating admin user...\n";
 			$user_id = $this->user_model->create(array(
-				'email' => 'admin@westminster.ac.uk',
+				'email' => 'admin@eastminster.ac.uk',
 				'full_name' => 'Admin User',
 				'password_hash' => password_hash('Admin@12345678', PASSWORD_BCRYPT),
 				'role' => 'admin',

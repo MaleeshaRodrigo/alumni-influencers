@@ -11,7 +11,7 @@
                 <form action="<?= site_url('auth/login') ?>" method="post">
                     <div class="mb-3">
                         <label class="form-label">Email address</label>
-                        <input type="email" name="email" class="form-control" required placeholder="name@westminster.ac.uk">
+                        <input type="email" name="email" class="form-control" required placeholder="name@eastminster.ac.uk">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Password</label>

@@ -11,14 +11,14 @@
                     <div class="alert alert-danger"><?= validation_errors() ?></div>
                 <?php endif; ?>
 
-                <form action="<?= site_url('auth/register') ?>" method="post">
+                <form action="<?= site_url('auth/do-register') ?>" method="post">
                     <div class="mb-3">
                         <label class="form-label">Full Name</label>
                         <input type="text" name="full_name" class="form-control" required value="<?= set_value('full_name') ?>">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">University Email</label>
-                        <input type="email" name="email" class="form-control" required value="<?= set_value('email') ?>" placeholder="name@westminster.ac.uk">
+                        <input type="email" name="email" class="form-control" required value="<?= set_value('email') ?>" placeholder="name@eastminster.ac.uk">
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Password</label>

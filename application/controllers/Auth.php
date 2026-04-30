@@ -12,6 +12,7 @@ defined('BASEPATH') or exit('No direct script access allowed');
  * @property CI_Form_validation $form_validation
  * @property CI_Email $email
  * @property User_model $user_model
+ * @property Profile_model $profile_model
  */
 class Auth extends MY_Controller
 {
@@ -19,6 +20,7 @@ class Auth extends MY_Controller
 	{
 		parent::__construct();
 		$this->load->model('User_model', 'user_model');
+		$this->load->model('Profile_model', 'profile_model');
 		$this->load->helper(array('form', 'url'));
 		$this->load->library('form_validation');
 		$this->load->library('RateLimiter');
@@ -41,6 +43,7 @@ class Auth extends MY_Controller
 			return;
 		}
 
+		$this->form_validation->set_rules('full_name', 'Full Name', 'trim|required|max_length[150]');
 		$this->form_validation->set_rules('email', 'University Email', 'trim|required|valid_email|max_length[255]|callback__email_domain_allowed|callback__email_available');
 		$this->form_validation->set_rules('password', 'Password', 'required|callback__strong_password');
 		$this->form_validation->set_rules('password_confirm', 'Confirm Password', 'required|matches[password]');
@@ -52,6 +55,7 @@ class Auth extends MY_Controller
 			return;
 		}
 
+		$full_name = trim((string) $this->input->post('full_name', TRUE));
 		$email = strtolower(trim((string) $this->input->post('email', TRUE)));
 		$password = (string) $this->input->post('password', FALSE);
 		$password_hash = password_hash($password, PASSWORD_DEFAULT);
@@ -63,6 +67,8 @@ class Auth extends MY_Controller
 			return;
 		}
 
+		$this->db->trans_begin();
+
 		$user_id = $this->user_model->create(array(
 			'email' => $email,
 			'password_hash' => $password_hash,
@@ -71,6 +77,7 @@ class Auth extends MY_Controller
 		));
 
 		if (!$user_id) {
+			$this->db->trans_rollback();
 			$this->ratelimiter->hit('auth_register:' . $ip, $this->rate_limit_window('auth_register'));
 			log_message('error', 'Registration failed: insert error for ' . $email);
 			$this->session->set_flashdata('auth_error', 'Unable to create your account right now.');
@@ -78,9 +85,23 @@ class Auth extends MY_Controller
 			return;
 		}
 
+		$profile_id = $this->profile_model->create(array(
+			'user_id' => $user_id,
+			'display_name' => $full_name
+		));
+
+		if (!$profile_id) {
+			$this->db->trans_rollback();
+			log_message('error', 'Registration failed: profile insert error for user_id=' . $user_id);
+			$this->session->set_flashdata('auth_error', 'Unable to create your profile right now.');
+			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
+			return;
+		}
+
 		try {
 			$raw_token = bin2hex(random_bytes(32));
 		} catch (Exception $e) {
+			$this->db->trans_rollback();
 			log_message('error', 'Registration failed: token generation error for ' . $email . ' - ' . $e->getMessage());
 			$this->session->set_flashdata('auth_error', 'Could not generate verification token. Please try again.');
 			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
@@ -93,11 +114,14 @@ class Auth extends MY_Controller
 
 		$token_saved = $this->user_model->set_email_verification_token($user_id, $token_hash, $expires_at);
 		if (!$token_saved) {
+			$this->db->trans_rollback();
 			log_message('error', 'Registration warning: failed to persist verify token for user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Account created, but verification setup failed. Contact support.');
 			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
 			return;
 		}
+
+		$this->db->trans_commit();
 
 		$verification_link = site_url('auth/verify_email/' . $raw_token);
 		$email_sent = $this->send_verification_email($email, $verification_link, $expires_at);
