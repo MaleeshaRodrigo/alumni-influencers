@@ -9,6 +9,7 @@ class AnalyticsApi extends CI_Controller {
 		$this->load->model('Analytics_model', 'analytics_model');
 		$this->load->library('BearerTokenAuth', NULL, 'bearer_auth');
 		$this->load->library('RateLimiter', NULL, 'ratelimiter');
+		$this->load->library('session');
 		$this->config->load('security_hardening', TRUE);
 	}
 
@@ -140,6 +141,12 @@ class AnalyticsApi extends CI_Controller {
 				'ok' => FALSE,
 				'response' => $this->json_response(array('ok' => FALSE, 'message' => 'Method not allowed.'), 405)
 			);
+		}
+
+		// Allow session-based authentication for internal dashboard requests
+		if ($this->session->userdata('is_authenticated')) {
+			$base_context['ok'] = TRUE;
+			return $base_context;
 		}
 
 		$auth = $this->bearer_auth->validate_request($required_scopes);

@@ -93,13 +93,10 @@ function saveFilterPreset() {
 }
 
 async function loadAlumni() {
-    const API_KEY = 'DASHBOARD_INTERNAL_KEY';
     const formData = new FormData(document.getElementById('filterForm'));
     const params = new URLSearchParams(formData).toString();
     
-    const response = await fetch(`<?= site_url('api/analytics/alumni_list') ?>?${params}`, {
-        headers: { 'Authorization': `Bearer ${API_KEY}` }
-    });
+    const response = await fetch(`<?= site_url('api/analytics/alumni_list') ?>?${params}`);
     const res = await response.json();
     
     if(res.ok) {

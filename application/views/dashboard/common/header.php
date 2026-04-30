@@ -23,7 +23,7 @@
         <?php if($this->session->userdata('is_authenticated')): ?>
         <nav class="col-md-2 d-none d-md-block sidebar">
             <div class="position-sticky pt-3">
-                <h5 class="px-3 mb-4">UniAnalytics</h5>
+                <h5 class="px-3 mb-4">Alumni Influencers</h5>
                 <ul class="nav flex-column">
                     <li class="nav-item">
                         <a href="<?= site_url('dashboard') ?>" class="<?= $this->uri->segment(2) == '' ? 'active' : '' ?>">

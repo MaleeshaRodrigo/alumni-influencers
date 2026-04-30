@@ -67,12 +67,8 @@
 
 <script>
 async function loadUsageStats() {
-    const API_KEY = 'DASHBOARD_INTERNAL_KEY';
-    
     try {
-        const response = await fetch('<?= site_url('api/analytics/usage_stats') ?>', {
-            headers: { 'Authorization': `Bearer ${API_KEY}` }
-        });
+        const response = await fetch('<?= site_url('api/analytics/usage_stats') ?>');
         const res = await response.json();
         
         if(res.ok) {
