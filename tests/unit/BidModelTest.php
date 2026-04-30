@@ -93,6 +93,7 @@ class BidModelTest extends TestCase
 		$featureModel->setReturn('create_featured_for_winner', 123);
 
 		$model = $this->newModel($featureModel);
+		$this->ci->db->queueQuery(array(array('lck' => 1)));
 		$this->ci->db->queueGet(array());
 		$this->ci->db->queueQuery(array(array('id' => 21, 'user_id' => 7, 'amount' => 100, 'submitted_at' => '2026-05-01 10:00:00')));
 		$this->ci->db->queueGet(array(array('id' => 14)));

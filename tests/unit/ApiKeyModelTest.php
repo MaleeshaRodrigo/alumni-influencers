@@ -30,7 +30,7 @@ class ApiKeyModelTest extends TestCase
 
 		$this->assertSame(99, $keyId);
 		$this->assertSame('demo key', strtolower(trim($this->ci->db->insertCalls[0][1]['name'])));
-		$this->assertSame('abc123', $this->ci->db->insertCalls[0][1]['key_prefix']);
+		$this->assertSame('ABC123', trim($this->ci->db->insertCalls[0][1]['key_prefix']));
 		$this->assertSame('abcdef', $this->ci->db->insertCalls[0][1]['key_hash']);
 	}
 

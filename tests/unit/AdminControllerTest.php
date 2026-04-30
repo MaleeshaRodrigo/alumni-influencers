@@ -8,16 +8,17 @@ class AdminControllerTest extends TestCase
 		$controller->form_validation = new FakeFormValidation();
 		$controller->api_key_model = new FakeService();
 		$controller->usage_log_model = new FakeService();
-		$controller->session->userdata['auth_user_id'] = 1;
-		$controller->session->userdata['is_authenticated'] = TRUE;
-		$controller->session->userdata['auth_role'] = 'admin';
-		$this->ci->db->queueGet(array(array(
+		$controller->user_model = new FakeService();
+		$controller->user_model->setReturn('find_by_id', array(
 			'id' => 1,
 			'email' => 'admin@example.com',
 			'role' => 'admin',
 			'status' => 'active',
 			'email_verified_at' => '2026-05-01 12:00:00'
-		)));
+		));
+		$controller->session->userdata['auth_user_id'] = 1;
+		$controller->session->userdata['is_authenticated'] = TRUE;
+		$controller->session->userdata['auth_role'] = 'admin';
 		return $controller;
 	}
 

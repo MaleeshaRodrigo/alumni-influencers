@@ -235,11 +235,13 @@ class FakeDb
 
 class FakeLoader
 {
+	private $owner;
 	private $ci;
 
-	public function __construct($ci)
+	public function __construct($owner, $ci = NULL)
 	{
-		$this->ci = $ci;
+		$this->owner = $owner;
+		$this->ci = $ci ?: $owner;
 	}
 
 	public function database()
@@ -273,9 +275,13 @@ class FakeLoader
 			return TRUE;
 		}
 
-		$object = new $class();
 		$property = $alias ?: strtolower($class);
-		$this->ci->{$property} = $object;
+		if (isset($this->owner->{$property})) {
+			return $this->owner->{$property};
+		}
+
+		$object = new $class();
+		$this->owner->{$property} = $object;
 		return $object;
 	}
 
@@ -286,9 +292,13 @@ class FakeLoader
 			return TRUE;
 		}
 
-		$object = new $class();
 		$property = $alias ?: strtolower($class);
-		$this->ci->{$property} = $object;
+		if (isset($this->owner->{$property})) {
+			return $this->owner->{$property};
+		}
+
+		$object = new $class();
+		$this->owner->{$property} = $object;
 		return $object;
 	}
 }
@@ -535,6 +545,6 @@ class TestCiContainer
 		$this->output = new FakeOutput();
 		$this->uri = new FakeUri();
 		$this->cache = new FakeCache();
-		$this->load = new FakeLoader($this);
+		$this->load = new FakeLoader($this, $this);
 	}
 }

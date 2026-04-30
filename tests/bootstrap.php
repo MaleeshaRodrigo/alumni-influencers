@@ -10,6 +10,13 @@ require_once BASEPATH . 'core/Controller.php';
 require_once BASEPATH . 'core/Model.php';
 require_once BASEPATH . 'helpers/url_helper.php';
 
+if (!function_exists('get_instance')) {
+	function &get_instance()
+	{
+		return CI_Controller::get_instance();
+	}
+}
+
 foreach (glob(APPPATH . 'core/*.php') as $coreFile) {
 	require_once $coreFile;
 }

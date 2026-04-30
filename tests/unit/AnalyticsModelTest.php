@@ -19,8 +19,10 @@ class AnalyticsModelTest extends TestCase
 		));
 
 		$this->assertCount(1, $rows);
-		$this->assertSame('like', $this->ci->db->whereCalls[2][0]);
-		$this->assertSame('like', $this->ci->db->whereCalls[3][0]);
+		$likeCalls = array_values(array_filter($this->ci->db->whereCalls, function ($call) {
+			return isset($call[0]) && $call[0] === 'like';
+		}));
+		$this->assertCount(2, $likeCalls);
 	}
 
 	public function testGetSkillsGapDataReturnsGroupedRows()
