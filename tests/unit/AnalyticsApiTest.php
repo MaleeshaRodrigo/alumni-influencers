@@ -50,4 +50,19 @@ class AnalyticsApiTest extends TestCase
 		$this->assertSame(1, $payload['data']['recent_logs'][0]['id']);
 		$this->assertSame(2, $payload['data']['api_keys'][0]['id']);
 	}
+
+	public function testRequestSucceedsWithSessionAuth()
+	{
+		$controller = $this->makeController();
+		$controller->input->methodValue = 'GET';
+		$controller->session->userdata['is_authenticated'] = TRUE;
+		// No bearer token set in input headers
+
+		$controller->alumni_distribution();
+
+		$this->assertSame(200, $this->ci->output->statusCode);
+		$payload = $this->jsonDecodeOutput($this->ci->output);
+		$this->assertTrue($payload['ok']);
+		$this->assertSame(0, $controller->bearer_auth->callCount('validate_request'));
+	}
 }
