@@ -71,6 +71,7 @@ class Auth extends MY_Controller
 
 		$user_id = $this->user_model->create(array(
 			'email' => $email,
+			'full_name' => $full_name,
 			'password_hash' => $password_hash,
 			'status' => 'pending_verification',
 			'role' => 'alumni'
