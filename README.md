@@ -1,82 +1,87 @@
-# Alumni Influencers (CodeIgniter 3 Coursework)
+# Alumni Influencers
 
-PHP + CodeIgniter 3 + MySQL coursework application covering:
-- university-email authentication and account verification,
-- API-based profile management and secure media upload,
-- blind bidding + automated featured alumnus selection,
-- API key lifecycle + usage logging,
-- public developer API + Swagger/OpenAPI docs.
+CodeIgniter 3 coursework application for alumni profile management, blind bidding, API key administration, and a public featured-alumnus API.
 
 ## Tech Stack
 
-- PHP (XAMPP runtime)
+- PHP 8.1 on XAMPP
 - CodeIgniter 3
 - MySQL / MariaDB
-- Swagger UI (CDN-hosted) for API documentation
+- Swagger UI for API documentation
 
-## Quick Start (Local XAMPP)
+## What This Project Covers
 
-1. Place project in `xampp/htdocs/alumni-influencers`.
-2. Start Apache and MySQL from XAMPP.
-3. Create `.env` from `.env.example` and set:
+- university-email authentication and account verification
+- API-driven profile management with secure media upload
+- education, certification, licence, course, and employment records
+- blind bidding with automated featured alumnus selection
+- API key lifecycle management and usage logging
+- public developer API plus OpenAPI/Swagger docs
+- coursework 2 analytics dashboard for alumni insights
+
+## Quick Start
+
+1. Place the project in `xampp/htdocs/alumni-influencers`.
+2. Start Apache and MySQL in XAMPP.
+3. Create a `.env` file from `.env.example` and set:
    - `APP_BASE_URL`
-   - DB credentials
+   - database credentials
    - `APP_ENCRYPTION_KEY`
-4. Import schema:
-  - `database/schema.sql`
-5. Ensure `ci_sessions` table exists (included in schema).
-6. Open app:
-   - `http://localhost/alumni-influencers/`
+4. Import `database/schema.sql` into MySQL.
+5. Make sure the `ci_sessions` table is present from the schema.
+6. Open the application at `http://localhost/alumni-influencers/`.
 
 ## Main URLs
 
-- Health:
-  - `/ping`
-- Public API:
-  - `/api/featured-today`
+- Health check: `/ping`
+- Public featured profile: `/api/featured-today`
 - Profile API:
   - `/api/profile`
   - `/api/profile/basic`
   - `/api/profile/save-basic`
   - `/api/profile/degrees`
+  - `/api/profile/degrees/add`
+  - `/api/profile/degrees/update/{id}`
+  - `/api/profile/degrees/delete/{id}`
   - `/api/profile/certifications`
   - `/api/profile/licences`
   - `/api/profile/courses`
   - `/api/profile/employment`
-- Bidding API:
+- Bidding:
   - `/bids/store`
   - `/bids/status`
   - `/bids/history`
-- Admin API:
+  - `/bids/run-daily-winner`
+- Admin:
   - `/admin/api_keys`
   - `/admin/create_api_key`
   - `/admin/revoke_api_key/{id}`
   - `/admin/usage_logs`
-- Swagger UI:
+- Dashboard:
+  - `/dashboard`
+  - `/dashboard/graphs`
+  - `/dashboard/alumni`
+- API docs:
   - `/api-docs`
-- OpenAPI spec:
   - `/api-docs/openapi.yaml`
-- Winner automation:
-  - `/bids/run-daily-winner`
 
-## Documentation Index
+## Documentation
 
 - OpenAPI spec: `docs/openapi.yaml`
+- Application guide: `docs/APPLICATION_GUIDE.md`
 
 ## Security Highlights
 
-- Password hashing via `password_hash()` / `password_verify()`
-- Verification and reset tokens stored as SHA-256 hashes only
+- password hashing with `password_hash()` and `password_verify()`
+- verification and reset tokens stored as SHA-256 hashes only
 - CSRF protection enabled
-- Session hardening and regeneration
-- Rate limiting for login/reset/register/public API
-- Security headers via CI hooks
-- API key hash-only storage + revocation + usage audit logging
+- session hardening and regeneration
+- rate limiting for login, reset, register, and public API endpoints
+- security headers applied through CodeIgniter hooks
+- API key hash-only storage, revocation, and usage audit logging
 
 ## Notes for Assessors
 
-- This project intentionally keeps CI3 MVC layering clear:
-  - controllers orchestrate flow,
-  - models hold data/business rules,
-  - Swagger UI is the only retained server-rendered view for API docs.
-- Logs are written through CodeIgniter `log_message()` for critical security and business events.
+- Controllers orchestrate request flow; models contain data and business rules.
+- Swagger UI is the retained server-rendered surface for API documentation.
+- Critical security and business events are written through CodeIgniter `log_message()`.
