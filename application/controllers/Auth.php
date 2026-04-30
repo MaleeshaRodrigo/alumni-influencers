@@ -31,16 +31,22 @@ class Auth extends MY_Controller
 	public function do_register()
 	{
 		if (strtoupper($this->input->method()) !== 'POST') {
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($this->input->is_ajax_request()) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Method not allowed.'), 405);
+			}
+			return redirect('dashboard/register');
 		}
+
+		$is_ajax = $this->input->is_ajax_request();
 
 		$ip = (string) $this->input->ip_address();
 		if ($this->is_rate_limited('auth_register', 'auth_register:' . $ip)) {
 			log_message('error', 'Registration rate limit hit for ip=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many registration attempts. Please try again later.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Too many registration attempts. Please try again later.', 'data' => NULL), 429);
+			}
+			return redirect('dashboard/register');
 		}
 
 		$this->form_validation->set_rules('full_name', 'Full Name', 'trim|required|max_length[150]');
@@ -51,8 +57,10 @@ class Auth extends MY_Controller
 		if ($this->form_validation->run() === FALSE) {
 			$this->ratelimiter->hit('auth_register:' . $ip, $this->rate_limit_window('auth_register'));
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => validation_errors(), 'data' => NULL), 400);
+			}
+			return redirect('dashboard/register');
 		}
 
 		$full_name = trim((string) $this->input->post('full_name', TRUE));
@@ -63,8 +71,10 @@ class Auth extends MY_Controller
 		if ($password_hash === FALSE) {
 			log_message('error', 'Registration failed: password hashing error for ' . $email);
 			$this->session->set_flashdata('auth_error', 'Registration failed. Please try again.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Registration failed. Please try again.', 'data' => NULL), 500);
+			}
+			return redirect('dashboard/register');
 		}
 
 		$this->db->trans_begin();
@@ -82,8 +92,10 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit('auth_register:' . $ip, $this->rate_limit_window('auth_register'));
 			log_message('error', 'Registration failed: insert error for ' . $email);
 			$this->session->set_flashdata('auth_error', 'Unable to create your account right now.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Unable to create your account right now.', 'data' => NULL), 500);
+			}
+			return redirect('dashboard/register');
 		}
 
 		$profile_id = $this->profile_model->create(array(
@@ -95,8 +107,10 @@ class Auth extends MY_Controller
 			$this->db->trans_rollback();
 			log_message('error', 'Registration failed: profile insert error for user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Unable to create your profile right now.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Unable to create your profile right now.', 'data' => NULL), 500);
+			}
+			return redirect('dashboard/register');
 		}
 
 		try {
@@ -105,8 +119,10 @@ class Auth extends MY_Controller
 			$this->db->trans_rollback();
 			log_message('error', 'Registration failed: token generation error for ' . $email . ' - ' . $e->getMessage());
 			$this->session->set_flashdata('auth_error', 'Could not generate verification token. Please try again.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Could not generate verification token. Please try again.', 'data' => NULL), 500);
+			}
+			return redirect('dashboard/register');
 		}
 
 		$token_hash = hash('sha256', $raw_token);
@@ -118,8 +134,10 @@ class Auth extends MY_Controller
 			$this->db->trans_rollback();
 			log_message('error', 'Registration warning: failed to persist verify token for user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Account created, but verification setup failed. Contact support.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Account created, but verification setup failed. Contact support.', 'data' => NULL), 500);
+			}
+			return redirect('dashboard/register');
 		}
 
 		$this->db->trans_commit();
@@ -136,7 +154,11 @@ class Auth extends MY_Controller
 
 		$this->session->set_flashdata('verify_email', $email);
 		$this->session->set_flashdata('auth_success', 'Registration successful. Please verify your email before logging in.');
-		return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
+		if ($is_ajax) {
+			return $this->json_response(array('ok' => TRUE, 'message' => 'Registration successful.', 'data' => array('email' => $email)), 200);
+		}
+		
+		return redirect('dashboard/login');
 	}
 
 	public function verify_email($token = NULL)
@@ -146,8 +168,7 @@ class Auth extends MY_Controller
 		if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
 			log_message('error', 'Email verification failed: malformed token');
 			$this->session->set_flashdata('auth_error', 'Invalid verification link.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			return redirect('dashboard/login');
 		}
 
 		$token_hash = hash('sha256', $token);
@@ -156,36 +177,39 @@ class Auth extends MY_Controller
 		if (!$user) {
 			log_message('error', 'Email verification failed: invalid or expired token');
 			$this->session->set_flashdata('auth_error', 'Verification link is invalid or expired.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			return redirect('dashboard/login');
 		}
 
 		$verified = $this->user_model->mark_email_verified((int) $user['id']);
 		if (!$verified) {
 			log_message('error', 'Email verification failed: DB update failed for user_id=' . $user['id']);
 			$this->session->set_flashdata('auth_error', 'Could not verify your account right now.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			return redirect('dashboard/login');
 		}
 
 		log_message('info', 'Email verification success: user_id=' . $user['id'] . ' email=' . $user['email']);
 		$this->session->set_flashdata('auth_success', 'Email verified successfully. You can now log in.');
-		return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
+		return redirect('dashboard/login');
 	}
 
 	public function do_login()
 	{
+		$is_ajax = $this->input->is_ajax_request();
 		if (strtoupper($this->input->method()) !== 'POST') {
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Method not allowed.'), 405);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$ip = (string) $this->input->ip_address();
 		if ($this->is_rate_limited('auth_login_ip', 'auth_login_ip:' . $ip)) {
 			log_message('error', 'Login rate limit hit (ip)=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many login attempts. Please try again later.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Too many login attempts. Please try again later.'), 429);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email|max_length[255]');
@@ -194,8 +218,10 @@ class Auth extends MY_Controller
 		if ($this->form_validation->run() === FALSE) {
 			$this->ratelimiter->hit('auth_login_ip:' . $ip, $this->rate_limit_window('auth_login_ip'));
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => validation_errors()), 400);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$email = strtolower(trim((string) $this->input->post('email', TRUE)));
@@ -203,8 +229,10 @@ class Auth extends MY_Controller
 		if ($this->is_rate_limited('auth_login_identity', $identity_key)) {
 			log_message('error', 'Login rate limit hit (identity hash) ip=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many login attempts for this account. Please try again later.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Too many login attempts for this account. Please try again later.'), 429);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$password = (string) $this->input->post('password', FALSE);
@@ -215,16 +243,20 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_login_identity'));
 			log_message('error', 'Login failed: unknown email=' . $email);
 			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Invalid email or password.'), 401);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$user_id = (int) $user['id'];
 		if (!empty($user['locked_until']) && strtotime((string) $user['locked_until']) > time()) {
 			log_message('error', 'Login blocked: account locked user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Account temporarily locked. Try again later.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Account temporarily locked. Try again later.'), 403);
+			}
+			return redirect('dashboard/login');
 		}
 
 		if (!password_verify($password, (string) $user['password_hash'])) {
@@ -234,8 +266,10 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_login_identity'));
 			log_message('error', 'Login failed: bad password user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Invalid email or password.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Invalid email or password.'), 401);
+			}
+			return redirect('dashboard/login');
 		}
 
 		if ((string) $user['status'] !== 'active' || empty($user['email_verified_at'])) {
@@ -243,8 +277,10 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_login_identity'));
 			log_message('error', 'Login blocked: unverified/inactive user_id=' . $user_id);
 			$this->session->set_flashdata('auth_error', 'Please verify your email before logging in.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Please verify your email before logging in.'), 403);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$this->user_model->clear_lock($user_id);
@@ -255,7 +291,10 @@ class Auth extends MY_Controller
 
 		log_message('info', 'Login success: user_id=' . $user_id . ' email=' . $user['email']);
 		$this->session->set_flashdata('auth_success', 'Login successful.');
-		return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
+		if ($is_ajax) {
+			return $this->json_response(array('ok' => TRUE, 'message' => 'Login successful.'), 200);
+		}
+		return redirect('dashboard');
 	}
 
 	public function logout()
@@ -275,30 +314,40 @@ class Auth extends MY_Controller
 		}
 
 		$this->session->set_flashdata('auth_success', 'You have been logged out.');
-		return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
+		if ($this->input->is_ajax_request()) {
+			return $this->json_response(array('ok' => TRUE, 'message' => 'Logged out.'), 200);
+		}
+		return redirect('dashboard/login');
 	}
 
 	public function send_reset()
 	{
+		$is_ajax = $this->input->is_ajax_request();
 		if (strtoupper($this->input->method()) !== 'POST') {
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Method not allowed.'), 405);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$ip = (string) $this->input->ip_address();
 		if ($this->is_rate_limited('auth_reset_request_ip', 'auth_reset_request_ip:' . $ip)) {
 			log_message('error', 'Password reset rate limit hit (ip)=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many reset requests. Please try again later.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Too many reset requests. Please try again later.'), 429);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$this->form_validation->set_rules('email', 'Email', 'trim|required|valid_email|max_length[255]');
 		if ($this->form_validation->run() === FALSE) {
 			$this->ratelimiter->hit('auth_reset_request_ip:' . $ip, $this->rate_limit_window('auth_reset_request_ip'));
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => validation_errors()), 400);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$email = strtolower(trim((string) $this->input->post('email', TRUE)));
@@ -306,8 +355,10 @@ class Auth extends MY_Controller
 		if ($this->is_rate_limited('auth_reset_request_identity', $identity_key)) {
 			log_message('error', 'Password reset rate limit hit (identity hash) ip=' . $ip);
 			$this->session->set_flashdata('auth_error', 'Too many reset requests for this account. Please try again later.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Too many reset requests for this account. Please try again later.'), 429);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$user = $this->user_model->find_by_email($email);
@@ -318,8 +369,10 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 			log_message('error', 'Password reset requested for unknown/deleted account email=' . $email);
 			$this->session->set_flashdata('auth_success', $generic_message);
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => TRUE, 'message' => $generic_message), 200);
+			}
+			return redirect('dashboard/login');
 		}
 
 		try {
@@ -327,8 +380,10 @@ class Auth extends MY_Controller
 		} catch (Exception $e) {
 			log_message('error', 'Password reset token generation failed for user_id=' . $user['id'] . ' - ' . $e->getMessage());
 			$this->session->set_flashdata('auth_error', 'Could not start password reset right now. Please try again.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Could not start password reset right now. Please try again.'), 500);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$token_hash = hash('sha256', $raw_token);
@@ -341,8 +396,10 @@ class Auth extends MY_Controller
 			$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 			log_message('error', 'Password reset token save failed for user_id=' . $user['id']);
 			$this->session->set_flashdata('auth_error', 'Could not start password reset right now. Please try again.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Could not start password reset right now. Please try again.'), 500);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$reset_link = site_url('auth/reset_password/' . $raw_token);
@@ -355,14 +412,20 @@ class Auth extends MY_Controller
 		$this->ratelimiter->hit('auth_reset_request_ip:' . $ip, $this->rate_limit_window('auth_reset_request_ip'));
 		$this->ratelimiter->hit($identity_key, $this->rate_limit_window('auth_reset_request_identity'));
 		$this->session->set_flashdata('auth_success', $generic_message);
-		return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
+		if ($is_ajax) {
+			return $this->json_response(array('ok' => TRUE, 'message' => $generic_message), 200);
+		}
+		return redirect('dashboard/login');
 	}
 
 	public function do_reset_password()
 	{
+		$is_ajax = $this->input->is_ajax_request();
 		if (strtoupper($this->input->method()) !== 'POST') {
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Method not allowed.'), 405);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$this->form_validation->set_rules('token', 'Token', 'required');
@@ -373,15 +436,19 @@ class Auth extends MY_Controller
 
 		if ($this->form_validation->run() === FALSE) {
 			$this->session->set_flashdata('auth_error', validation_errors('<p style="margin:4px 0;">', '</p>'));
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => validation_errors()), 400);
+			}
+			return redirect('dashboard/login');
 		}
 
 		if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
 			log_message('error', 'Password reset submit failed: malformed token');
 			$this->session->set_flashdata('auth_error', 'Invalid reset token.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Invalid reset token.'), 400);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$token_hash = hash('sha256', $token);
@@ -389,8 +456,10 @@ class Auth extends MY_Controller
 		if (!$user) {
 			log_message('error', 'Password reset submit failed: expired/invalid token');
 			$this->session->set_flashdata('auth_error', 'Reset token is invalid or expired.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Reset token is invalid or expired.'), 400);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$new_password = (string) $this->input->post('password', FALSE);
@@ -398,16 +467,20 @@ class Auth extends MY_Controller
 		if ($new_hash === FALSE) {
 			log_message('error', 'Password reset failed: hash error user_id=' . $user['id']);
 			$this->session->set_flashdata('auth_error', 'Could not update password right now.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Could not update password right now.'), 500);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$updated = $this->user_model->update_password_hash((int) $user['id'], $new_hash);
 		if (!$updated) {
 			log_message('error', 'Password reset failed: DB update error user_id=' . $user['id']);
 			$this->session->set_flashdata('auth_error', 'Could not update password right now.');
-			return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
-			return;
+			if ($is_ajax) {
+				return $this->json_response(array('ok' => FALSE, 'message' => 'Could not update password right now.'), 500);
+			}
+			return redirect('dashboard/login');
 		}
 
 		$this->user_model->clear_password_reset_token((int) $user['id']);
@@ -415,7 +488,10 @@ class Auth extends MY_Controller
 
 		log_message('info', 'Password reset success: user_id=' . $user['id']);
 		$this->session->set_flashdata('auth_success', 'Password updated. You can now log in.');
-		return $this->json_response(array('ok' => FALSE, 'message' => 'Request processed.', 'data' => NULL), 400);
+		if ($is_ajax) {
+			return $this->json_response(array('ok' => TRUE, 'message' => 'Password updated.'), 200);
+		}
+		return redirect('dashboard/login');
 	}
 
 	public function _email_domain_allowed($email)

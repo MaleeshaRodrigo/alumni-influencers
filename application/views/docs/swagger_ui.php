@@ -4,7 +4,7 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Alumni Influencers API Docs</title>
-	<link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
 	<style>
 		* { margin: 0; padding: 0; box-sizing: border-box; }
 		body { background: #fafafa; font-family: Arial, sans-serif; }
@@ -110,8 +110,8 @@
 	<!-- Swagger UI Container -->
 	<div id="swagger-ui"></div>
 
-	<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-	<script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
 	<script>
 		window.onload = function () {
 			window.ui = SwaggerUIBundle({

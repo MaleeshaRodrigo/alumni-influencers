@@ -7,11 +7,17 @@
                 <h4 class="card-title text-center mb-4">University Registration</h4>
                 <p class="text-muted text-center small">Only university email domains allowed.</p>
                 
-                <?php if(validation_errors()): ?>
+                <?php if($this->session->flashdata('auth_error')): ?>
+                    <div class="alert alert-danger"><?= $this->session->flashdata('auth_error') ?></div>
+                <?php elseif(validation_errors()): ?>
                     <div class="alert alert-danger"><?= validation_errors() ?></div>
+                <?php endif; ?>
+                <?php if($this->session->flashdata('auth_success')): ?>
+                    <div class="alert alert-success"><?= $this->session->flashdata('auth_success') ?></div>
                 <?php endif; ?>
 
                 <form action="<?= site_url('auth/do-register') ?>" method="post">
+                    <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>">
                     <div class="mb-3">
                         <label class="form-label">Full Name</label>
                         <input type="text" name="full_name" class="form-control" required value="<?= set_value('full_name') ?>">

@@ -5,10 +5,14 @@
         <div class="card shadow">
             <div class="card-body">
                 <h4 class="card-title text-center mb-4">University Login</h4>
-                <?php if($this->session->flashdata('error')): ?>
-                    <div class="alert alert-danger"><?= $this->session->flashdata('error') ?></div>
+                <?php if($this->session->flashdata('auth_error')): ?>
+                    <div class="alert alert-danger"><?= $this->session->flashdata('auth_error') ?></div>
                 <?php endif; ?>
-                <form action="<?= site_url('auth/login') ?>" method="post">
+                <?php if($this->session->flashdata('auth_success')): ?>
+                    <div class="alert alert-success"><?= $this->session->flashdata('auth_success') ?></div>
+                <?php endif; ?>
+                <form action="<?= site_url('auth/do_login') ?>" method="post">
+                    <input type="hidden" name="<?= $this->security->get_csrf_token_name(); ?>" value="<?= $this->security->get_csrf_hash(); ?>">
                     <div class="mb-3">
                         <label class="form-label">Email address</label>
                         <input type="email" name="email" class="form-control" required placeholder="name@eastminster.ac.uk">

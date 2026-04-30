@@ -94,7 +94,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // In a real app, this would be fetched from secure storage or set via session
-    const API_KEY = 'DASHBOARD_INTERNAL_KEY'; 
+    const API_KEY = '53f3570318efab662ec419d29e766f7c12f97134530a1973';
 
     async function fetchData(endpoint) {
         const response = await fetch(`<?= site_url('api/analytics/') ?>${endpoint}`, {
