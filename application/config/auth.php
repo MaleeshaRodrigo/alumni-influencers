@@ -7,8 +7,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 |--------------------------------------------------------------------------
 */
 $config['allowed_email_domains'] = array(
-	'my.westminster.ac.uk',
-	'westminster.ac.uk',
+	'my.eastminster.ac.uk',
+	'eastminster.ac.uk',
 	'iit.ac.lk'
 );
 
