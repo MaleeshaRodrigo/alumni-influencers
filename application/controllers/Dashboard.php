@@ -9,6 +9,7 @@ class Dashboard extends CI_Controller {
 		$this->load->helper(array('form', 'url'));
 		$this->load->library('session');
 		$this->load->library('form_validation');
+		$this->load->model(array('Profile_model', 'Degree_model', 'Certification_model', 'Employment_model', 'Licence_model'));
 	}
 
 	public function index()
@@ -39,5 +40,27 @@ class Dashboard extends CI_Controller {
 	public function register()
 	{
 		$this->load->view('dashboard/register');
+	}
+
+	public function profile($profile_id = NULL)
+	{
+		if (!$profile_id) {
+			show_404();
+		}
+
+		// Get profile data
+		$profile = $this->Profile_model->get_by_id($profile_id);
+		if (!$profile) {
+			show_404();
+		}
+
+		// Get related data
+		$data['profile'] = $profile;
+		$data['degrees'] = $this->db->where('profile_id', $profile_id)->get('degrees')->result_array();
+		$data['certifications'] = $this->db->where('profile_id', $profile_id)->get('certifications')->result_array();
+		$data['employment'] = $this->db->where('profile_id', $profile_id)->get('employment_history')->result_array();
+		$data['licences'] = $this->db->where('profile_id', $profile_id)->get('licences')->result_array();
+
+		$this->load->view('dashboard/profile', $data);
 	}
 }

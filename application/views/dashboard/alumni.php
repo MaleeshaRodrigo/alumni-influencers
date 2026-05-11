@@ -115,7 +115,7 @@ async function loadAlumni() {
                 <td>${item.programme || 'N/A'}</td>
                 <td>${item.graduation_date || 'N/A'}</td>
                 <td>${item.industry || 'N/A'}</td>
-                <td><button class="btn btn-sm btn-link">View Profile</button></td>
+                <td><button class="btn btn-sm btn-link" onclick="viewProfile(${item.id})">View Profile</button></td>
             </tr>`;
             tbody.innerHTML += row;
         });
@@ -135,6 +135,11 @@ function exportToCSV() {
     link.setAttribute("download", "alumni_export.csv");
     document.body.appendChild(link);
     link.click();
+}
+
+function viewProfile(userId) {
+    // Navigate to the alumni profile view
+    window.location.href = `<?= site_url('dashboard/profile/') ?>${userId}`;
 }
 </script>
 

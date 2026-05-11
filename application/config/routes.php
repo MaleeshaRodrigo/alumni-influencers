@@ -112,6 +112,7 @@ $route['api/profile/employment/delete/(:num)'] = 'profileapi/delete_employment/$
 $route['dashboard'] = 'dashboard/index';
 $route['dashboard/graphs'] = 'dashboard/graphs';
 $route['dashboard/alumni'] = 'dashboard/alumni';
+$route['dashboard/profile/(:num)'] = 'dashboard/profile/$1';
 $route['dashboard/login'] = 'dashboard/login';
 $route['dashboard/register'] = 'dashboard/register';
 
