@@ -37,6 +37,56 @@
  */
 
 /*
+ * ---------------------------------------------------------------
+ * LOAD ENVIRONMENT VARIABLES FROM .env
+ * ---------------------------------------------------------------
+ */
+if (is_file(__DIR__.'/.env'))
+{
+	$env_lines = file(__DIR__.'/.env', FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+
+	foreach ($env_lines as $line)
+	{
+		$line = trim($line);
+
+		if ($line === '' OR $line[0] === '#')
+		{
+			continue;
+		}
+
+		$equals_position = strpos($line, '=');
+
+		if ($equals_position === FALSE)
+		{
+			continue;
+		}
+
+		$name = trim(substr($line, 0, $equals_position));
+		$value = trim(substr($line, $equals_position + 1));
+
+		if ($name === '')
+		{
+			continue;
+		}
+
+		if (
+			(strlen($value) >= 2) &&
+			(($value[0] === '"' && substr($value, -1) === '"') OR ($value[0] === '\'' && substr($value, -1) === '\''))
+		)
+		{
+			$value = substr($value, 1, -1);
+		}
+
+		if (getenv($name) === FALSE)
+		{
+			putenv($name.'='.$value);
+			$_ENV[$name] = $value;
+			$_SERVER[$name] = $value;
+		}
+	}
+}
+
+/*
  *---------------------------------------------------------------
  * APPLICATION ENVIRONMENT
  *---------------------------------------------------------------
@@ -66,7 +116,14 @@
 switch (ENVIRONMENT)
 {
 	case 'development':
-		error_reporting(-1);
+		if (version_compare(PHP_VERSION, '8.2', '>='))
+		{
+			error_reporting(E_ALL & ~E_DEPRECATED & ~E_USER_DEPRECATED);
+		}
+		else
+		{
+			error_reporting(-1);
+		}
 		ini_set('display_errors', 1);
 	break;
 

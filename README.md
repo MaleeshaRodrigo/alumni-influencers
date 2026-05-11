@@ -1,94 +1,87 @@
-# Alumni Influencers — Coursework Project
+# Alumni Influencers
 
-## Overview
+CodeIgniter 3 coursework application for alumni profile management, blind bidding, API key administration, and a public featured-alumnus API.
 
-This repository contains the CodeIgniter-based web application developed for the coursework assignment "Alumni Influencers". The application demonstrates a small MVC web app built using the CodeIgniter framework, focused on routing, controllers, views, configuration, and integration with PHP components such as caching and database access.
+## Tech Stack
 
-## Coursework Goal
+- PHP 8.1 on XAMPP
+- CodeIgniter 3
+- MySQL / MariaDB
+- Swagger UI for API documentation
 
-The objective of the coursework was to design and implement a simple, well-structured server-side web application that follows MVC principles, applies framework configuration best practices, and demonstrates knowledge of routing, controllers, models, views, and basic performance/security considerations.
+## What This Project Covers
 
-## How I achieved this
+- university-email authentication and account verification
+- API-driven profile management with secure media upload
+- education, certification, licence, course, and employment records
+- blind bidding with automated featured alumnus selection
+- API key lifecycle management and usage logging
+- public developer API plus OpenAPI/Swagger docs
+- coursework 2 analytics dashboard for alumni insights
 
-- Used the CodeIgniter framework to enforce MVC separation and speed development.
-- Implemented routing and controller logic under `application/controllers/` to handle site endpoints.
-- Kept presentation in `application/views/` and configuration in `application/config/`.
-- Connected the app to a database via `application/config/database.php` and used the framework's DB utilities.
-- Added performance features like caching (see `application/config/memcached.php`) and profiling (`application/config/profiler.php`).
-- Followed security best practices available in CodeIgniter: input filtering, CSRF/validation hooks, and secure config defaults.
+## Quick Start
 
-## Architecture (high level)
+1. Place the project in `xampp/htdocs/alumni-influencers`.
+2. Start Apache and MySQL in XAMPP.
+3. Create a `.env` file from `.env.example` and set:
+   - `APP_BASE_URL`
+   - database credentials
+   - `APP_ENCRYPTION_KEY`
+4. Import `database/schema.sql` into MySQL.
+5. Make sure the `ci_sessions` table is present from the schema.
+6. Open the application at `http://localhost/alumni-influencers/`.
 
-- Framework: CodeIgniter (lightweight MVC PHP framework).
-- Layout: standard CodeIgniter structure with `application/` (app code) and `system/` (framework core).
-- MVC: Controllers live in `application/controllers/`, models in `application/models/`, views in `application/views/`.
-- Config: All environment- and framework-level settings live in `application/config/`.
+## Main URLs
 
-Key files and locations
+- Health check: `/ping`
+- Public featured profile: `/api/featured-today`
+- Profile API:
+  - `/api/profile`
+  - `/api/profile/basic`
+  - `/api/profile/save-basic`
+  - `/api/profile/degrees`
+  - `/api/profile/degrees/add`
+  - `/api/profile/degrees/update/{id}`
+  - `/api/profile/degrees/delete/{id}`
+  - `/api/profile/certifications`
+  - `/api/profile/licences`
+  - `/api/profile/courses`
+  - `/api/profile/employment`
+- Bidding:
+  - `/bids/store`
+  - `/bids/status`
+  - `/bids/history`
+  - `/bids/run-daily-winner`
+- Admin:
+  - `/admin/api_keys`
+  - `/admin/create_api_key`
+  - `/admin/revoke_api_key/{id}`
+  - `/admin/usage_logs`
+- Dashboard:
+  - `/dashboard`
+  - `/dashboard/graphs`
+  - `/dashboard/alumni`
+- API docs:
+  - `/api-docs`
+  - `/api-docs/openapi.yaml`
 
-- Front controller: [index.php](index.php)
-- Application config: [application/config/config.php](application/config/config.php)
-- Database config: [application/config/database.php](application/config/database.php)
-- Routes: [application/config/routes.php](application/config/routes.php)
-- Example controller: [application/controllers/Welcome.php](application/controllers/Welcome.php)
-- Example view: [application/views/welcome_message.php](application/views/welcome_message.php)
-- Composer manifest: [composer.json](composer.json)
+## Documentation
 
-## Setup & Installation
+- OpenAPI spec: `docs/openapi.yaml`
+- Application guide: `docs/APPLICATION_GUIDE.md`
 
-Requirements:
+## Security Highlights
 
-- PHP 7.2+ (or the version required by the provided CodeIgniter in `system/`).
-- A web server (Apache, Nginx) or PHP built-in server for development.
-- Composer (optional) to manage any additional dependencies declared in `composer.json`.
+- password hashing with `password_hash()` and `password_verify()`
+- verification and reset tokens stored as SHA-256 hashes only
+- CSRF protection enabled
+- session hardening and regeneration
+- rate limiting for login, reset, register, and public API endpoints
+- security headers applied through CodeIgniter hooks
+- API key hash-only storage, revocation, and usage audit logging
 
-Quick start (development):
+## Notes for Assessors
 
-1. Install dependencies (if any):
-
-```bash
-composer install
-```
-
-2. Configure the application:
-
-- Copy and update `application/config/config.php` to set `base_url` and other environment settings.
-- Edit `application/config/database.php` to configure your database connection.
-- Ensure `application/cache/` and `application/logs/` are writable by the web server.
-
-3. Run locally using PHP built-in server (from the project root):
-
-```bash
-php -S localhost:8000
-```
-
-Then open http://localhost:8000/ in your browser.
-
-Note: For production use, configure a proper virtual host in Apache/Nginx and set production-safe PHP settings.
-
-## Development Notes
-
-- Caching: memcached configuration is located at `application/config/memcached.php` and can be enabled for improved performance.
-- Migrations: check `application/config/migration.php` for migration settings.
-- Hooks: application-level hooks are configured in `application/config/hooks.php`.
-- Profiling and debugging: `application/config/profiler.php` controls the built-in profiler.
-
-## Testing & Verification
-
-There are no automated tests included by default; manual verification steps:
-
-- Start the server and browse to the default route to confirm the `Welcome` controller and view render correctly.
-- Check database connectivity by exercising any data-driven endpoints (ensure `application/config/database.php` is correct).
-
-## Deployment
-
-- Use a supported web server and PHP version. Copy the project to your server, configure document root to point to the project root (or a public folder if you create one).
-- Secure `application/config/` settings and ensure directories for caches and logs are writable only by the web server user.
-
-## License
-
-This project includes a `license.txt` in the repository root. See that file for licensing details.
-
-## Contact / Course Submission
-
-If this README is part of a coursework submission, include your student details, assignment brief, and any additional notes requested by the instructor here.
+- Controllers orchestrate request flow; models contain data and business rules.
+- Swagger UI is the retained server-rendered surface for API documentation.
+- Critical security and business events are written through CodeIgniter `log_message()`.
