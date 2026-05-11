@@ -640,7 +640,7 @@ class Auth extends MY_Controller
 
 	private function allowed_email_domains()
 	{
-		$domains = $this->auth_config_item('allowed_email_domains', array('my.sliit.lk', 'sliit.lk'));
+		$domains = $this->auth_config_item('allowed_email_domains', array('my.eastminster.ac.uk', 'eastminster.ac.uk'));
 		$clean = array();
 
 		foreach ((array) $domains as $domain) {
