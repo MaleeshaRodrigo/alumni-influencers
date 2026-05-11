@@ -27,6 +27,7 @@ DROP TABLE IF EXISTS `ci_sessions`;
 CREATE TABLE `users` (
   `id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT,
   `email` varchar(255) NOT NULL,
+  `full_name` varchar(150) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `role` enum('admin','alumni','viewer') NOT NULL DEFAULT 'alumni',
   `status` enum('pending_verification','active','suspended','deleted') NOT NULL DEFAULT 'pending_verification',

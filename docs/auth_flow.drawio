@@ -1,0 +1,134 @@
+<mxfile host="drawio-plugin" modified="2026-04-30T15:06:46.777Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36" version="22.1.22" etag="YkcJBcK7wvZl2ppa8mzH" type="embed">
+  <diagram id="auth-flow" name="User Authentication Flow">
+    <mxGraphModel dx="1054" dy="728" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="reg1" value="Registration Page&#xa;(dashboard/register)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="40" y="40" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="reg2" value="Auth/do_register&#xa;(Controller)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="240" y="30" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="reg3" value="Save User (pending)&#xa;&amp; Profile" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="460" y="40" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="reg4" value="Send Verification&#xa;Email" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="660" y="40" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" parent="1" source="reg1" target="reg2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" parent="1" source="reg2" target="reg3" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint value="Valid Data" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e3" parent="1" source="reg3" target="reg4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="ver1" value="Verification Link&#xa;(Email)" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;" parent="1" vertex="1">
+          <mxGeometry x="680" y="140" width="80" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="ver2" value="Auth/verify_email&#xa;(Controller)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="460" y="150" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ver3" value="Activate Account&#xa;(status = &#39;active&#39;)" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="260" y="160" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" parent="1" source="reg4" target="ver1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" parent="1" source="ver1" target="ver2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" parent="1" source="ver2" target="ver3" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint value="Valid Token" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="log1" value="Login Page&#xa;(dashboard/login)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" parent="1" vertex="1">
+          <mxGeometry x="40" y="280" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="log2" value="Auth/do_login&#xa;(Controller)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="240" y="270" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="log3" value="Success: Create&#xa;Session" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="460" y="280" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="log4" value="Dashboard&#xa;(main)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" parent="1" vertex="1">
+          <mxGeometry x="660" y="280" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" parent="1" source="ver3" target="log1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" parent="1" source="log1" target="log2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" parent="1" source="log2" target="log3" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint value="Auth OK" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" parent="1" source="log3" target="log4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="res1" value="Reset Request&#xa;(Login Form)" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="40" y="440" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="res2" value="Auth/send_reset&#xa;(Controller)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="240" y="430" width="160" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="res3" value="Generate &amp; Save&#xa;Reset Token" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="460" y="440" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="res4" value="Send Reset&#xa;Email" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="660" y="440" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" parent="1" source="log1" target="res1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" parent="1" source="res1" target="res2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" parent="1" source="res2" target="res3" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint value="User Exists" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" parent="1" source="res3" target="res4" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="upd1" value="Reset Link&#xa;(Email)" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;darkOpacity=0.05;" parent="1" vertex="1">
+          <mxGeometry x="680" y="540" width="80" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="upd2" value="Auth/do_reset_password&#xa;(Controller - POST)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" parent="1" vertex="1">
+          <mxGeometry x="460" y="550" width="180" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="upd3" value="Update Password&#xa;&amp; Clear Token" style="rounded=0;whiteSpace=wrap;html=1;" parent="1" vertex="1">
+          <mxGeometry x="260" y="560" width="140" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" parent="1" source="res4" target="upd1" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" parent="1" source="upd1" target="upd2" edge="1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e17" parent="1" source="upd2" target="upd3" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint value="Token Valid" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e18" parent="1" source="upd3" target="log1" edge="1">
+          <mxGeometry relative="1" as="geometry">
+            <mxPoint value="Return to Login" as="offset" />
+            <Array as="points">
+              <mxPoint x="10" y="590" />
+              <mxPoint x="10" y="300" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

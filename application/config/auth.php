@@ -7,9 +7,8 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 |--------------------------------------------------------------------------
 */
 $config['allowed_email_domains'] = array(
-	'my.westminster.ac.uk',
-	'westminster.ac.uk',
-	'iit.ac.lk'
+	'my.eastminster.ac.uk',
+	'eastminster.ac.uk',
 );
 
 $config['password_min_length'] = 12;

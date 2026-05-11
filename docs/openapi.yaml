@@ -843,25 +843,9 @@ paths:
       summary: Verify email token
       parameters:
         - in: path
-                responses:
-                  '201':
-                    description: Registration successful
-                    content:
-                      application/json:
-                        schema:
-                          $ref: '#/components/schemas/ApiSuccess'
-                  '400':
-                    description: Validation or business failure
-                    content:
-                      application/json:
-                        schema:
-                          $ref: '#/components/schemas/ApiError'
-                  '429':
-                    description: Registration rate limit reached
-                    content:
-                      application/json:
-                        schema:
-                          $ref: '#/components/schemas/ApiError'
+          name: token
+          required: true
+          schema:
             type: string
             pattern: '^[a-f0-9]{64}$'
       responses:
@@ -878,24 +862,8 @@ paths:
           application/x-www-form-urlencoded:
             schema:
               type: object
-        '200':
-          description: Email verified successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiSuccess'
-        '400':
-          description: Invalid or expired token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
-        '500':
-          description: Verification update failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ApiError'
+              required: [email, password]
+              properties:
                 email:
                   type: string
                   format: email
@@ -905,6 +873,24 @@ paths:
       responses:
         '302':
           description: Redirect to dashboard on success or login on failure
+        '400':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '401':
+          description: Invalid email or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '403':
+          description: Account locked or email not verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
         '429':
           description: Login rate limit reached
 
@@ -984,37 +970,9 @@ paths:
       responses:
         '200':
           description: HTML page showing winning/losing status only
-                  responses:
-                    '200':
-                      description: Login successful
-                      content:
-                        application/json:
-                          schema:
-                            $ref: '#/components/schemas/ApiSuccess'
-                    '400':
-                      description: Validation failure
-                      content:
-                        application/json:
-                          schema:
-                            $ref: '#/components/schemas/ApiError'
-                    '401':
-                      description: Invalid credentials
-                      content:
-                        application/json:
-                          schema:
-                            $ref: '#/components/schemas/ApiError'
-                    '403':
-                      description: Account not verified or inactive
-                      content:
-                        application/json:
-                          schema:
-                            $ref: '#/components/schemas/ApiError'
-                    '423':
-                      description: Account locked
-                      content:
-                        application/json:
-                          schema:
-                            $ref: '#/components/schemas/ApiError'
+
+  /bids/run-daily-winner:
+    get:
       tags: [Bidding]
       summary: Run the daily winner selection job
       description: Intended for CLI or scheduled automation; web calls require BIDS_ADMIN_KEY.
@@ -1050,25 +1008,9 @@ paths:
       summary: Admin API key management page
       security:
         - sessionAuth: []
-                  responses:
-                    '200':
-                      description: Reset request accepted (generic response)
-                      content:
-                        application/json:
-                          schema:
-                            $ref: '#/components/schemas/ApiSuccess'
-                    '400':
-                      description: Validation failure
-                      content:
-                        application/json:
-                          schema:
-                            $ref: '#/components/schemas/ApiError'
-                    '500':
-                      description: Could not initiate password reset
-                      content:
-                        application/json:
-                          schema:
-                            $ref: '#/components/schemas/ApiError'
+      responses:
+        '200':
+          description: HTML page for admin API key management
         '403':
           description: Forbidden (non-admin)
 
@@ -1095,26 +1037,51 @@ paths:
                   type: string
                 expires_at:
                   type: string
-        responses:
-          '200':
-            description: Password reset successful
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ApiSuccess'
-          '400':
-            description: Validation or token failure
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ApiError'
-          '500':
-            description: Could not update password
-            content:
-              application/json:
-                schema:
-                  $ref: '#/components/schemas/ApiError'
-          description: Redirect back to admin keys page with flash result
+      responses:
+        '201':
+          description: API key created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      token:
+                        type: string
+                      prefix:
+                        type: string
+        '400':
+          description: Validation failure or invalid expires_at format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '404':
+          description: Target user does not exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '405':
+          description: Method not allowed when not POST
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+        '500':
+          description: Failed to create API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 
   /admin/revoke_api_key/{id}:
     post:
